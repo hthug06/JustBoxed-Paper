@@ -1,6 +1,7 @@
 package fr.ht06.justBoxed;
 
 import fr.ht06.justBoxed.Box.BoxRegistry;
+import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.Box.BoxTemplate;
 import fr.ht06.justBoxed.Commands.BoxedCommand;
 import fr.ht06.justBoxed.Storage.BoxRepository;
@@ -16,6 +17,7 @@ public final class JustBoxed extends JavaPlugin {
     private DatabaseManager databaseManager;
     private BoxRepository boxRepository;
     private BoxRegistry boxRegistry;
+    private BoxService boxService;
 
     public BoxRegistry getBoxRegistry() {
         return this.boxRegistry;
@@ -29,15 +31,16 @@ public final class JustBoxed extends JavaPlugin {
     public void onEnable() {
         // launch the box registry
         this.boxRegistry = new BoxRegistry();
-        this.databaseManager = new DatabaseManager(this);
 
+        // Init the db manager
+        this.databaseManager = new DatabaseManager(this);
         try {
             getLogger().info("Loading boxes...");
             this.databaseManager.init();
-            this.boxRepository = new BoxRepository(this, this.databaseManager);
+            boxRepository = new BoxRepository(this, this.databaseManager);
 
             // Loading async in RAM
-            this.boxRepository.loadAll(this.boxRegistry).thenRun(() -> {
+            boxRepository.loadAll(this.boxRegistry).thenRun(() -> {
                 getLogger().info("Successfully loading boxes !");
             });
         } catch (Exception e) {
@@ -46,9 +49,11 @@ public final class JustBoxed extends JavaPlugin {
             return;
         }
 
-        // Register the command via the LifecycleManager of the plugin
-        BoxedCommand boxedCommand = new BoxedCommand();
+        // Start the box service with the registry and the repository
+        this.boxService = new BoxService(this, this.boxRegistry, boxRepository);
 
+        // Register the command via the LifecycleManager of the plugin
+        BoxedCommand boxedCommand = new BoxedCommand(this, this.boxService);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             final Commands registrar = event.registrar();
             registrar.register(
@@ -60,7 +65,7 @@ public final class JustBoxed extends JavaPlugin {
 
 
         // On first launch, create a template world with seed 8500081009970950196 (every biome and structure in 1000 blocks)
-        // else do nothing
+        // It will be used to create boxes by copying it instead of generating a new world
         if (!BoxTemplate.exist()) {
             getLogger().info("Template world not found, creating it...");
             BoxTemplate.create(this);
@@ -70,6 +75,7 @@ public final class JustBoxed extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Close the connection to the database
         if (this.databaseManager != null) {
             this.databaseManager.close();
         }

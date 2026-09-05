@@ -2,10 +2,7 @@ package fr.ht06.justBoxed.Box;
 
 import fr.ht06.justBoxed.JustBoxed;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
-import org.bukkit.NamespacedKey;
-import org.bukkit.World;
-import org.bukkit.WorldCreator;
+import org.bukkit.*;
 import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
 
@@ -17,7 +14,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 
-public class BoxCreator {
+public class BoxWorldManager {
 
     // File to ignore during copy.
     private static final Set<String> IGNORED_FILES = Set.of(
@@ -84,4 +81,48 @@ public class BoxCreator {
         });
     }
 
+    /// Delete a box by deleting all the files
+    public static void deleteBox(Plugin plugin, Box box) {
+        World world = box.getWorld(plugin);
+
+        // Unload World
+        if (!box.unloadWorld(plugin)) {
+            plugin.getLogger().warning("Failed to unload world for box " + box.getUuid());
+            return;
+        }
+
+        Path dimensionsFolder = Bukkit.getWorldContainer().toPath()
+                .resolve("world")
+                .resolve("dimensions")
+                .resolve("justboxed");
+        Path targetDir = dimensionsFolder.resolve("box_" + box.getUuid());
+
+        // Delete folder Async
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                deleteDirectoryRecursively(targetDir);
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to delete files in world : " + e.getMessage());
+            }
+        });
+    }
+
+    private static void deleteDirectoryRecursively(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return;
+        }
+        Files.walkFileTree(path, new SimpleFileVisitor<>() {
+            @Override
+            public @NonNull FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public @NonNull FileVisitResult postVisitDirectory(@NonNull Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
 }

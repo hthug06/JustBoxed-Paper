@@ -96,7 +96,35 @@ public class BoxRepository {
                 ps.setString(1, boxUuid.toString());
                 ps.executeUpdate();
             } catch (SQLException e) {
-                plugin.getLogger().severe("Erreur when deleting a box : " + e.getMessage());
+                plugin.getLogger().severe("Error when deleting a box : " + e.getMessage());
+            }
+        });
+    }
+
+    /// Add a member to a box
+    public CompletableFuture<Void> addMember(UUID boxUuid, UUID playerUuid) {
+        return CompletableFuture.runAsync(() -> {
+            String sql = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
+            try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+                ps.setString(1, boxUuid.toString());
+                ps.setString(2, playerUuid.toString());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().severe("Error when adding member: " + e.getMessage());
+            }
+        });
+    }
+
+    /// Remove a member from a box
+    public CompletableFuture<Void> removeMember(UUID boxUuid, UUID playerUuid) {
+        return CompletableFuture.runAsync(() -> {
+            String sql = "DELETE FROM box_members WHERE box_uuid = ? AND player_uuid = ?";
+            try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+                ps.setString(1, boxUuid.toString());
+                ps.setString(2, playerUuid.toString());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().severe("Error when removing member: " + e.getMessage());
             }
         });
     }

@@ -4,15 +4,21 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import fr.ht06.justBoxed.Box.BoxCreator;
+import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.JustBoxed;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
 public class BoxedCommand {
+    private final JustBoxed plugin;
+    private final BoxService boxService;
+
+
+    public BoxedCommand(JustBoxed plugin, BoxService boxService) {
+        this.plugin = plugin;
+        this.boxService = boxService;
+    }
 
     public LiteralArgumentBuilder<CommandSourceStack> createCommand() {
         return Commands.literal("box")
@@ -33,17 +39,14 @@ public class BoxedCommand {
             ctx.getSource().getSender().sendPlainMessage("Only players can create a box!");
             return Command.SINGLE_SUCCESS;
         }
-
         String rawName = StringArgumentType.getString(ctx, "box_name");
-        Component displayName = MiniMessage.miniMessage().deserialize(rawName);
 
-        player.sendPlainMessage("Creating box...");
-
-        BoxCreator.createBoxInstance(JustBoxed.getInstance(), displayName, player.getUniqueId(), world -> {
-            if (world != null) {
-                player.teleportAsync(world.getSpawnLocation().toCenterLocation());
-                player.sendMessage("Box ready, teleporting...");
-            }
+        this.boxService.createBox(rawName, player).thenAccept(box -> {
+            player.sendPlainMessage("Box created ! Teleporting...");
+            player.teleportAsync(box.getWorld(this.plugin).getSpawnLocation().toCenterLocation());
+        }).exceptionally(ex -> {
+            player.sendPlainMessage("Error when creating box : " + ex.getMessage());
+            return null;
         });
 
         return Command.SINGLE_SUCCESS;
