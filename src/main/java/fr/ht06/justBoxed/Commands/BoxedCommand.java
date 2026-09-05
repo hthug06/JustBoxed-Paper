@@ -9,7 +9,12 @@ import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.JustBoxed;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
+import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
+
+import java.util.UUID;
 
 public class BoxedCommand {
     private final JustBoxed plugin;
@@ -30,13 +35,14 @@ public class BoxedCommand {
                 .then(Commands.literal("delete")
                         .requires(source -> this.requirePlayerWithBox(source) && this.requireOwner(source))
                         .executes(this::deleteBox))
+                .then(Commands.literal("team")
+                        .requires(this::requirePlayerWithBox)
+                        .executes(this::teamBox))
                 .then(Commands.literal("teleport")
                         .requires(this::requirePlayerWithBox)
                         .executes(this::teleportToBox))
                 ;
     }
-
-
 
     private boolean requireBoxlessPlayer(CommandSourceStack source) {
         return source.getSender() instanceof Player player
@@ -87,15 +93,49 @@ public class BoxedCommand {
         return Command.SINGLE_SUCCESS;
     }
 
+    private int teamBox(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only players can see their team!");
+            return Command.SINGLE_SUCCESS;
+        }
+
+        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+
+        // Display is like:
+        // --- [team display name] ---
+        // Owner : [owner username]
+        // Members : (if there are members)
+        // - [member username]
+        // - [member username]
+
+        player.sendMessage(Component.text("--- ").append(box.getDisplayName()).append(Component.text(" ---")));
+        player.sendMessage(Component.text("Owner : ").append(Bukkit.getPlayer(box.getOwner()).displayName()));
+        if (!box.getMembers().isEmpty()) {
+            player.sendMessage(Component.text("Members : "));
+            for (UUID member : box.getMembers()) {
+                player.sendMessage(Component.text("- ").append(Bukkit.getPlayer(member).displayName()));
+            }
+        }
+
+
+        return Command.SINGLE_SUCCESS;
+    }
+
     private int teleportToBox(CommandContext<CommandSourceStack> ctx) {
         if (!(ctx.getSource().getSender() instanceof Player player)) {
-            ctx.getSource().getSender().sendPlainMessage("Only players can delete a box!");
+            ctx.getSource().getSender().sendPlainMessage("Only players can teleport to a box!");
             return Command.SINGLE_SUCCESS;
         }
 
         Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
         if (box.isWorldLoaded(this.plugin)) {
             player.teleportAsync(box.getWorld(this.plugin).getSpawnLocation().toCenterLocation()).thenRun(() -> player.sendPlainMessage("Teleported to box !"));
+        }
+        else {
+            player.sendPlainMessage("Loading world...");
+            World world = box.loadWorld(this.plugin);
+            player.teleportAsync(world.getSpawnLocation().toCenterLocation());
+            player.sendPlainMessage("Teleported to box !");
         }
         return Command.SINGLE_SUCCESS;
     }
