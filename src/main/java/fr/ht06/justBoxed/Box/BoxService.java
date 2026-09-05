@@ -63,15 +63,18 @@ public class BoxService {
 
     /// Add a member to the box and save it into SQLite
     public CompletableFuture<Void> addMember(Box box, UUID memberUuid) {
-        box.addMember(memberUuid);
         registry.addMember(box.getUuid(), memberUuid);
         return repository.addMember(box.getUuid(), memberUuid);
     }
 
     /// remove a member from the box and update it into SQLite
     public CompletableFuture<Void> removeMember(Box box, UUID memberUuid) {
-        box.removeMember(memberUuid);
         registry.removeMember(box.getUuid(), memberUuid);
         return repository.removeMember(box.getUuid(), memberUuid);
+    }
+
+    public CompletableFuture<Void> setBoxName(Box box, String teamName) {
+        registry.updateDisplayName(box.getUuid(), teamName);
+        return repository.updateDisplayName(box.getUuid(), teamName);
     }
 }

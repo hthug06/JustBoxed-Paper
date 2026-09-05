@@ -30,11 +30,18 @@ public class BoxedCommand {
                 .then(Commands.literal("create")
                         .requires(this::requireBoxlessPlayer)
                         .then(Commands.argument("box_name", StringArgumentType.greedyString())
-                                .executes(this::createBox))
+                                .executes(this::createBox)
+                        )
                 )
                 .then(Commands.literal("delete")
                         .requires(source -> this.requirePlayerWithBox(source) && this.requireOwner(source))
                         .executes(this::deleteBox))
+                .then(Commands.literal("setname")
+                        .requires(source -> this.requirePlayerWithBox(source) && this.requireOwner(source))
+                        .then(Commands.argument("box_name", StringArgumentType.greedyString())
+                                .executes(this::setBoxName)
+                        )
+                )
                 .then(Commands.literal("team")
                         .requires(this::requirePlayerWithBox)
                         .executes(this::teamBox))
@@ -56,7 +63,7 @@ public class BoxedCommand {
 
     private boolean requireOwner(CommandSourceStack source) {
         return source.getSender() instanceof Player player
-                && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()).getOwner() == player.getUniqueId();
+                && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()).getOwner().equals(player.getUniqueId());
     }
 
     private int createBox(CommandContext<CommandSourceStack> ctx) {
@@ -92,6 +99,25 @@ public class BoxedCommand {
 
         return Command.SINGLE_SUCCESS;
     }
+
+    private int setBoxName(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only players can change the team name of a box!");
+            return Command.SINGLE_SUCCESS;
+        }
+
+        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+        this.boxService.setBoxName(box, ctx.getArgument("box_name", String.class))
+                .thenAccept(_ -> player.sendMessage(Component.text("Box name changed : ").append(box.getDisplayName())))
+                .exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error when changing team name : " + ex.getMessage());
+                    player.sendPlainMessage("Failed to change team name (please contact an administrator)");
+                    return null;
+                });
+
+        return Command.SINGLE_SUCCESS;
+    }
+
 
     private int teamBox(CommandContext<CommandSourceStack> ctx) {
         if (!(ctx.getSource().getSender() instanceof Player player)) {

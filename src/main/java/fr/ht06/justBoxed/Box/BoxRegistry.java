@@ -1,5 +1,6 @@
 package fr.ht06.justBoxed.Box;
 
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
@@ -52,5 +53,9 @@ public class BoxRegistry {
     public void removeMember(UUID boxUuid, UUID memberUuid) {
         playerToBox.remove(memberUuid);
         this.boxes.get(boxUuid).removeMember(memberUuid);
+    }
+
+    public void updateDisplayName(UUID boxUuid, String displayName) {
+        this.boxes.get(boxUuid).setDisplayName(MiniMessage.miniMessage().deserialize(displayName));
     }
 }

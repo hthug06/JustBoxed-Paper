@@ -89,6 +89,10 @@ public class BoxRepository {
                 conn.commit();
                 conn.setAutoCommit(true);
             } catch (SQLException e) {
+                try {
+                    conn.rollback();
+                    conn.setAutoCommit(true);
+                } catch (SQLException ignored) {}
                 plugin.getLogger().severe("Error when saving a box : " + e.getMessage());
             }
         });
@@ -135,6 +139,21 @@ public class BoxRepository {
                 ps.executeUpdate();
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error when removing member: " + e.getMessage());
+            }
+        });
+    }
+
+    public CompletableFuture<Void> updateDisplayName(UUID boxUuid, String displayName) {
+        return CompletableFuture.runAsync(() -> {
+            String sql = "UPDATE boxes SET display_name = ? WHERE box_uuid = ?";
+            Connection conn = dbManager.getConnection();
+
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, displayName);
+                ps.setString(2, boxUuid.toString());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().severe("Error when updating box display name : " + e.getMessage());
             }
         });
     }
