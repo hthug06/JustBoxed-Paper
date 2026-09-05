@@ -3,6 +3,7 @@ package fr.ht06.justBoxed;
 import fr.ht06.justBoxed.Box.BoxRegistry;
 import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.Box.BoxTemplate;
+import fr.ht06.justBoxed.Commands.AdminBoxedCommand;
 import fr.ht06.justBoxed.Commands.BoxedCommand;
 import fr.ht06.justBoxed.Storage.BoxRepository;
 import fr.ht06.justBoxed.Storage.DatabaseManager;
@@ -54,12 +55,16 @@ public final class JustBoxed extends JavaPlugin {
 
         // Register the command via the LifecycleManager of the plugin
         BoxedCommand boxedCommand = new BoxedCommand(this, this.boxService);
+        AdminBoxedCommand adminBoxedCommand = new AdminBoxedCommand(this, this.boxService);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             final Commands registrar = event.registrar();
             registrar.register(
                     boxedCommand.createCommand().build(),
-                    "A command related to every box thing",
-                    List.of("box")
+                    "A command related to every box thing"
+            );
+            registrar.register(
+                    adminBoxedCommand.createCommand().build(),
+                    "Admin command for boxed plugin"
             );
         });
 
