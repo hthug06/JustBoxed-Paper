@@ -22,8 +22,12 @@ public class BoxRegistry {
     }
 
     public @Nullable Box getBoxByPlayer(UUID uuid) {
-        UUID boxId = playerToBox.get(uuid);
-        return boxId != null ? boxes.get(boxId) : null;
+        UUID boxUuid = playerToBox.get(uuid);
+        return boxUuid != null ? boxes.get(boxUuid) : null;
+    }
+
+    public @Nullable Box getBoxByUuid(UUID boxUuid) {
+        return boxes.get(boxUuid);
     }
 
     public void deleteBox(UUID boxUuid) {

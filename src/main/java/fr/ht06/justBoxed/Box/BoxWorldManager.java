@@ -1,7 +1,5 @@
 package fr.ht06.justBoxed.Box;
 
-import fr.ht06.justBoxed.JustBoxed;
-import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
@@ -10,7 +8,6 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 
@@ -26,15 +23,14 @@ public class BoxWorldManager {
     );
 
     /// Create a box instance, aka a world for this box, a box team and also teleport the player to it
-    public static void createBoxInstance(Plugin plugin, Component displayName, UUID owner, Consumer<World> onComplete) {
-        UUID boxUuid = UUID.randomUUID();
+    public static void createBoxInstance(Plugin plugin, Box box, Consumer<World> onComplete) {
         Path dimensionsFolder = Bukkit.getWorldContainer().toPath()
                 .resolve("world")
                 .resolve("dimensions")
                 .resolve("justboxed");
 
         Path sourceDir = dimensionsFolder.resolve(BoxTemplate.TEMPLATE_WORLD_NAME);
-        Path targetDir = dimensionsFolder.resolve("box_" + boxUuid);
+        Path targetDir = dimensionsFolder.resolve("box_" + box.getUuid());
 
         // Copy file async (no freeze of tick)
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -43,19 +39,16 @@ public class BoxWorldManager {
 
                 // Back to main thread to declare the world to Paper
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, "box_" + boxUuid.toString().toLowerCase()));
+                    WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, "box_" + box.getUuid().toString().toLowerCase()));
 
                     World boxWorld = creator.createWorld();
 
                     if (onComplete != null) {
                         onComplete.accept(boxWorld);
                     }
-
-                    // Register the box
-                    JustBoxed.getInstance().getBoxRegistry().registerBox(new Box(boxUuid, displayName, owner));
                 });
             } catch (IOException e) {
-                plugin.getLogger().severe("Error when creating the box " + boxUuid.toString().toLowerCase() + " : " + e.getMessage() + "(invalid path)");
+                plugin.getLogger().severe("Error when creating the box " + box.getUuid().toString().toLowerCase() + " : " + e.getMessage() + "(invalid path)");
             }
         });
     }

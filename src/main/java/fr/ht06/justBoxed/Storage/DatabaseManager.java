@@ -1,5 +1,6 @@
 package fr.ht06.justBoxed.Storage;
 
+import fr.ht06.justBoxed.JustBoxed;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -27,6 +28,9 @@ public class DatabaseManager {
 
         Class.forName("org.sqlite.JDBC");
         this.connection = DriverManager.getConnection("jdbc:sqlite:plugins/JustBoxed/data.db");
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("PRAGMA foreign_keys = ON;");
+        }
 
         createTables();
     }
@@ -56,7 +60,17 @@ public class DatabaseManager {
     }
 
     public Connection getConnection() {
-        return connection;
+        try {
+            if (this.connection == null || this.connection.isClosed()) {
+                File dbFile = new File(plugin.getDataFolder(), "data.db");
+                String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
+                this.connection = DriverManager.getConnection(url);
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Failed to get SQLite connection : " + e.getMessage());
+            plugin.getServer().getPluginManager().disablePlugin(JustBoxed.getInstance());
+        }
+        return this.connection;
     }
 
     public void close() {

@@ -31,11 +31,13 @@ public class BoxService {
         CompletableFuture<Box> future = new CompletableFuture<>();
 
         // Clone and load the template world
-        BoxWorldManager.createBoxInstance(plugin, displayName, owner.getUniqueId(), world -> {
+        BoxWorldManager.createBoxInstance(plugin, box, world -> {
             if (world == null) {
                 future.completeExceptionally(new IllegalStateException("Failed to create the world for the box for " + owner.getName()));
                 return;
             }
+            //Teleport
+            owner.teleportAsync(world.getSpawnLocation().toCenterLocation());
 
             // Register the box
             registry.registerBox(box);
@@ -55,7 +57,7 @@ public class BoxService {
         // Unload world and delete folder
         BoxWorldManager.deleteBox(plugin, box);
 
-        // 3. Delete from SQLite
+        // Delete from SQLite
         return repository.deleteBox(box.getUuid());
     }
 

@@ -23,32 +23,38 @@ public class BoxRepository {
     /// Load everything from the db into the memory
     public CompletableFuture<Void> loadAll(BoxRegistry registry) {
         return CompletableFuture.runAsync(() -> {
+            Connection conn = dbManager.getConnection();
             String queryBoxes = "SELECT box_uuid, display_name, owner_uuid FROM boxes";
-            String queryMembers = "SELECT player_uuid FROM box_members WHERE box_uuid = ?";
+            String queryMembers = "SELECT box_uuid, player_uuid FROM box_members";
 
-            try (PreparedStatement psBoxes = dbManager.getConnection().prepareStatement(queryBoxes);
-                 ResultSet rsBoxes = psBoxes.executeQuery()) {
+            try {
+                // Load every box first
+                try (PreparedStatement ps = conn.prepareStatement(queryBoxes);
+                     ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        UUID boxUuid = UUID.fromString(rs.getString("box_uuid"));
+                        Component displayName = MiniMessage.miniMessage().deserialize(rs.getString("display_name"));
+                        UUID ownerUuid = UUID.fromString(rs.getString("owner_uuid"));
 
-                while (rsBoxes.next()) {
-                    UUID boxUuid = UUID.fromString(rsBoxes.getString("box_uuid"));
-                    String displayName = rsBoxes.getString("display_name");
-                    UUID ownerUuid = UUID.fromString(rsBoxes.getString("owner_uuid"));
+                        registry.registerBox(new Box(boxUuid, displayName, ownerUuid));
+                    }
+                }
 
-                    Box box = new Box(boxUuid, Component.text(displayName), ownerUuid);
+                // And then load every member
+                try (PreparedStatement ps = conn.prepareStatement(queryMembers);
+                     ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        UUID boxUuid = UUID.fromString(rs.getString("box_uuid"));
+                        UUID playerUuid = UUID.fromString(rs.getString("player_uuid"));
 
-                    try (PreparedStatement psMembers = dbManager.getConnection().prepareStatement(queryMembers)) {
-                        psMembers.setString(1, boxUuid.toString());
-                        try (ResultSet rsMembers = psMembers.executeQuery()) {
-                            while (rsMembers.next()) {
-                                box.addMember(UUID.fromString(rsMembers.getString("player_uuid")));
-                            }
+                        Box box = registry.getBoxByUuid(boxUuid);
+                        if (box != null) {
+                            box.addMember(playerUuid);
                         }
                     }
-
-                    registry.registerBox(box);
                 }
             } catch (SQLException e) {
-                plugin.getLogger().severe("Error when loading boxes : " + e.getMessage());
+                plugin.getLogger().severe("Error when loading boxes: " + e.getMessage());
             }
         });
     }
@@ -58,8 +64,8 @@ public class BoxRepository {
         return CompletableFuture.runAsync(() -> {
             String insertBox = "INSERT OR REPLACE INTO boxes (box_uuid, display_name, owner_uuid) VALUES (?, ?, ?)";
             String insertMember = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
-
-            try (Connection conn = dbManager.getConnection()) {
+            Connection conn = dbManager.getConnection();
+            try {
                 conn.setAutoCommit(false);
 
                 // boxes
@@ -92,8 +98,10 @@ public class BoxRepository {
     public CompletableFuture<Void> deleteBox(UUID boxUuid) {
         return CompletableFuture.runAsync(() -> {
             String delete = "DELETE FROM boxes WHERE box_uuid = ?";
-            try (PreparedStatement ps = dbManager.getConnection().prepareStatement(delete)) {
-                ps.setString(1, boxUuid.toString());
+            Connection conn = dbManager.getConnection();
+
+            try (PreparedStatement ps = conn.prepareStatement(delete)) {
+                ps.setString(1, boxUuid.toString().toLowerCase());
                 ps.executeUpdate();
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error when deleting a box : " + e.getMessage());
@@ -105,7 +113,8 @@ public class BoxRepository {
     public CompletableFuture<Void> addMember(UUID boxUuid, UUID playerUuid) {
         return CompletableFuture.runAsync(() -> {
             String sql = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
-            try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+            Connection conn = dbManager.getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, boxUuid.toString());
                 ps.setString(2, playerUuid.toString());
                 ps.executeUpdate();
@@ -119,7 +128,8 @@ public class BoxRepository {
     public CompletableFuture<Void> removeMember(UUID boxUuid, UUID playerUuid) {
         return CompletableFuture.runAsync(() -> {
             String sql = "DELETE FROM box_members WHERE box_uuid = ? AND player_uuid = ?";
-            try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+            Connection conn = dbManager.getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, boxUuid.toString());
                 ps.setString(2, playerUuid.toString());
                 ps.executeUpdate();
