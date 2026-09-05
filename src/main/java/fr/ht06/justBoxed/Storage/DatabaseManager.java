@@ -26,7 +26,7 @@ public class DatabaseManager {
         }
 
         Class.forName("org.sqlite.JDBC");
-        this.connection = DriverManager.getConnection("jdbc:sqlite:plugins/TestPlugin/data.db");
+        this.connection = DriverManager.getConnection("jdbc:sqlite:plugins/JustBoxed/data.db");
 
         createTables();
     }
@@ -38,7 +38,7 @@ public class DatabaseManager {
                 CREATE TABLE IF NOT EXISTS boxes (
                     box_uuid TEXT PRIMARY KEY,
                     display_name TEXT NOT NULL,
-                    owner_uuid TEXT NOT NULL,
+                    owner_uuid TEXT NOT NULL
                 );
             """);
 
