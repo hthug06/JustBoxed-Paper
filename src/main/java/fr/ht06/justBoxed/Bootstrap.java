@@ -8,7 +8,7 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 
 import java.util.List;
 
-public class Bootstrap implements PluginBootstrap {
+class Bootstrap implements PluginBootstrap {
 
     @Override
     public void bootstrap(BootstrapContext bootstrapContext) {
