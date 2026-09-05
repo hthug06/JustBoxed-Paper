@@ -15,7 +15,7 @@ import java.nio.file.Path;
 public class BoxTemplate {
 
     /// Need to be in lower case
-    public static final String TEMPLATE_WORLD_NAME = "world_box_template";
+    public static final String TEMPLATE_WORLD_NAME = "box_template";
     public static final long TEMPLATE_WORLD_SEED = 8500081009970950196L;
 
     /// Create the template world, load the spawn chunk, and unload the world
@@ -33,9 +33,7 @@ public class BoxTemplate {
             // Load the spawn chunk (async)
             world.getChunkAtAsync(17 >> 4, (-24) >> 4, true).thenAccept(_ -> {
                 // Back sync on the main thread for save and unload
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    Bukkit.unloadWorld(world, true);
-                });
+                plugin.getServer().getScheduler().runTask(plugin, () -> Bukkit.unloadWorld(world, true));
             });
         } else {
             JustBoxed.getInstance().getLogger().severe("Cannot unload Template world, world is null");
