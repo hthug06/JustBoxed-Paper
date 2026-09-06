@@ -1,8 +1,13 @@
 package fr.ht06.justBoxed.Box;
 
+import fr.ht06.justBoxed.Box.Invitation.BoxInvite;
 import fr.ht06.justBoxed.Storage.BoxRepository;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -76,5 +81,71 @@ public class BoxService {
     public CompletableFuture<Void> setBoxName(Box box, String teamName) {
         registry.updateDisplayName(box.getUuid(), teamName);
         return repository.updateDisplayName(box.getUuid(), teamName);
+    }
+
+    /// Invite a player to the box
+    /// Return true if the player was invited, false if he was already invited
+    public boolean invitePlayer(Plugin plugin, Box box, UUID inviterUuid, UUID targetUuid) {
+        if (box.isInvited(targetUuid)) {
+            return false;
+        }
+        else{
+            box.addInvitation(new BoxInvite(plugin, box, inviterUuid, targetUuid, () -> {
+                box.removeInvitation(targetUuid);
+
+                OfflinePlayer player = Bukkit.getOfflinePlayer(targetUuid);
+                box.sendMessageToOwner(Component.text("Invitation send to " + player.getName() + " expired."));
+            }));
+            return true;
+        }
+
+    }
+
+    /// The target accepting the invite from the box UUID
+    /// return true if the player successfully join the box, else false
+    public CompletableFuture<Boolean> acceptInvitation(Box box, UUID targetUuid) {
+
+        if (!box.isInvited(targetUuid)) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        // Remove every invitation about this player
+        registry.removeInvitation(targetUuid);
+        registry.addMember(box.getUuid(), targetUuid);
+
+        // Add member async to the db
+        return repository.addMember(box.getUuid(), targetUuid).thenApply(_ -> {
+
+            // But we need to load the world sync
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                Player player = plugin.getServer().getPlayer(targetUuid);
+                if (player == null || !player.isOnline()) {
+                    return;
+                }
+
+                if (!box.isWorldLoaded(this.plugin)) {
+                    box.loadWorld(this.plugin);
+                }
+
+                World world = box.getWorld(this.plugin);
+                if (world != null) {
+                    Location targetLoc = world.getSpawnLocation().toCenterLocation();
+                    player.teleportAsync(targetLoc);
+                }
+
+                box.broadcastMessage(player.getName() + " has joined the box !");
+            });
+
+            return true;
+        });
+    }
+
+    /// The target deny the invite from the box UUID
+    /// return true if the player successfully deny the invitation, else false
+    public boolean denyInvite(Box box, UUID targetUuid) {
+        if (!box.isInvited(targetUuid)) return false;
+
+        box.removeInvitation(targetUuid);
+        return true;
     }
 }

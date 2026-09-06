@@ -1,5 +1,6 @@
 package fr.ht06.justBoxed.Box;
 
+import fr.ht06.justBoxed.Box.Invitation.BoxInvite;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -9,7 +10,6 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /// Represents an isolated game box instance and its team data.
 ///
@@ -19,13 +19,14 @@ public class Box {
     private final UUID uuid;
     private Component displayName;
     private UUID owner;
-    private List<UUID> members;
+    private final List<UUID> members = new ArrayList<>();
+
+    private final List<BoxInvite> invitedPlayers = new ArrayList<>();
 
     public Box(UUID uuid, Component displayName, UUID owner) {
         this.uuid = uuid;
         this.displayName = displayName;
         this.owner = owner;
-        this.members = new ArrayList<>();
     }
 
     public UUID getUuid() {
@@ -96,6 +97,41 @@ public class Box {
 
         //Unload without saving because we're deleting it
         return Bukkit.unloadWorld(world, false);
+    }
 
+    public boolean isInvited(UUID playerUUID){
+        return this.invitedPlayers.stream().anyMatch(invite -> invite.getTargetUuid().equals(playerUUID));
+    }
+
+    public void addInvitation(BoxInvite invite){
+        this.invitedPlayers.add(invite);
+    }
+
+    public void removeInvitation(UUID playerUUID){
+        this.invitedPlayers.removeIf(invite -> {
+            if (invite.getTargetUuid().equals(playerUUID)) {
+                invite.cancel();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    public void broadcastMessage(String message){
+        for (UUID uuid : this.members){
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline())
+                p.sendPlainMessage(message);
+        }
+
+        Player player = Bukkit.getPlayer(this.owner);
+        if (player != null && player.isOnline())
+            player.sendPlainMessage(message);
+    }
+
+    public void sendMessageToOwner(Component message){
+        Player player = Bukkit.getPlayer(this.owner);
+        if (player != null && player.isOnline())
+            player.sendMessage(message);
     }
 }

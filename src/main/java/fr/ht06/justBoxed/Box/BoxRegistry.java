@@ -58,4 +58,10 @@ public class BoxRegistry {
     public void updateDisplayName(UUID boxUuid, String displayName) {
         this.boxes.get(boxUuid).setDisplayName(MiniMessage.miniMessage().deserialize(displayName));
     }
+
+    public void removeInvitation(UUID targetUuid) {
+        for (Box box : boxes.values()) {
+            box.removeInvitation(targetUuid);
+        }
+    }
 }
