@@ -19,7 +19,9 @@ public class BoxWorldManager {
             "raids.dat",
             "scheduled_events.dat",
             "uid.dat",
-            "session.lock"
+            "session.lock",
+            // If you don't ignore this, paper will consider every world have the same uuid and only 1 world can be loaded at a time
+            "metadata.dat"
     );
 
     /// Create a box instance, aka a world for this box, a box team and also teleport the player to it
@@ -49,6 +51,18 @@ public class BoxWorldManager {
                 });
             } catch (IOException e) {
                 plugin.getLogger().severe("Error when creating the box " + box.getUuid().toString().toLowerCase() + " : " + e.getMessage() + "(invalid path)");
+                plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    if (onComplete != null) {
+                        onComplete.accept(null);
+                    }
+                });
+
+                // Delete it if the world failed to create
+                Path deleteDimensionsFolder = Bukkit.getWorldContainer().toPath()
+                        .resolve("world")
+                        .resolve("dimensions")
+                        .resolve("justboxed");
+                Path deleteTargetDir = dimensionsFolder.resolve("box_" + box.getUuid());
             }
         });
     }
