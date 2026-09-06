@@ -85,6 +85,13 @@ public class BoxedCommand {
                                 )
                         )
                 )
+                .then(Commands.literal("leave")
+                        .requires(this::requireNotOwner)
+                        .executes(this::leaveBox)
+                        .then(Commands.literal("confirm")
+                                .executes(this::leaveBoxConfirm)
+                        )
+                )
                 .then(Commands.literal("setname")
                         .requires(this::requireOwner)
                         .then(Commands.argument("box_name", StringArgumentType.greedyString())
@@ -116,13 +123,26 @@ public class BoxedCommand {
                 && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()).getOwner().equals(player.getUniqueId());
     }
 
+    private boolean requireNotOwner(CommandSourceStack source) {
+        return requirePlayerWithBox(source)
+                && source.getSender() instanceof Player player
+                && !JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()).getOwner().equals(player.getUniqueId());
+    }
+
     private int acceptInvitation(CommandContext<CommandSourceStack> ctx) {
         if (!(ctx.getSource().getSender() instanceof Player player)) {
             ctx.getSource().getSender().sendPlainMessage("Only players can join a box!");
             return Command.SINGLE_SUCCESS;
         }
 
-        UUID boxUuid = UUID.fromString(StringArgumentType.getString(ctx, "box_uuid"));
+        UUID boxUuid;
+        try {
+             boxUuid = UUID.fromString(StringArgumentType.getString(ctx, "box_uuid"));
+        } catch (IllegalArgumentException e) {
+            player.sendPlainMessage("Invalid box UUID format!");
+            return Command.SINGLE_SUCCESS;
+        }
+
         Box box = this.plugin.getBoxRegistry().getBoxByUuid(boxUuid);
 
         if (box == null) {
@@ -322,6 +342,47 @@ public class BoxedCommand {
         return Command.SINGLE_SUCCESS;
     }
 
+    private int leaveBox(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only players can change the team name of a box!");
+            return Command.SINGLE_SUCCESS;
+        }
+
+        // Prepare message
+        Component message = Component.text("Do you really want to leave this box?")
+                .appendNewline()
+                .append(Component.text("LEAVE IT", NamedTextColor.DARK_RED).decorate(TextDecoration.BOLD)
+                        .clickEvent(ClickEvent.runCommand("/box leave confirm"))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to kick the player", NamedTextColor.RED))));
+
+        player.sendMessage(message);
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int leaveBoxConfirm(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only players can change the team name of a box!");
+            return Command.SINGLE_SUCCESS;
+        }
+
+        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+
+        this.boxService.removeMember(box, player.getUniqueId())
+                .thenAccept(_ -> {
+                    player.teleportAsync(Bukkit.getWorld("world").getSpawnLocation());
+                    player.sendMessage(Component.text("You successfully leave ").append(box.getDisplayName()));
+                })
+                .exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error when leaving a box: " + ex.getMessage());
+                    player.sendPlainMessage("Failed to leave the box (please contact an administrator)");
+                    return null;
+                });
+        box.broadcastMessage(player.getName() +  "leaved the box...");
+
+        return Command.SINGLE_SUCCESS;
+    }
+
     private int setBoxName(CommandContext<CommandSourceStack> ctx) {
         if (!(ctx.getSource().getSender() instanceof Player player)) {
             ctx.getSource().getSender().sendPlainMessage("Only players can change the team name of a box!");
@@ -357,7 +418,7 @@ public class BoxedCommand {
         // - [member username]
 
         player.sendMessage(Component.text("--- ").append(box.getDisplayName()).append(Component.text(" ---")));
-        player.sendMessage(Component.text("Owner : ").append(Bukkit.getPlayer(box.getOwner()).displayName()));
+        player.sendMessage(Component.text("Owner : " + Bukkit.getOfflinePlayer(box.getOwner()).getName()));
         if (!box.getMembers().isEmpty()) {
             player.sendMessage(Component.text("Members : "));
             for (UUID member : box.getMembers()) {
