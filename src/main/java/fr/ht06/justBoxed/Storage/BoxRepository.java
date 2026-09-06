@@ -47,9 +47,8 @@ public class BoxRepository {
                         UUID boxUuid = UUID.fromString(rs.getString("box_uuid"));
                         UUID playerUuid = UUID.fromString(rs.getString("player_uuid"));
 
-                        Box box = registry.getBoxByUuid(boxUuid);
-                        if (box != null) {
-                            box.addMember(playerUuid);
+                        if (registry.getBoxByUuid(boxUuid) != null) {
+                            registry.addMember(boxUuid, playerUuid);
                         }
                     }
                 }
