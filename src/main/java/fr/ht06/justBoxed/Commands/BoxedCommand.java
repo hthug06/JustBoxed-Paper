@@ -16,6 +16,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
@@ -48,7 +49,7 @@ public class BoxedCommand {
                         )
                 )
                 .then(Commands.literal("delete")
-                        .requires(source -> this.requirePlayerWithBox(source) && this.requireOwner(source))
+                        .requires(this::requireOwner)
                         .executes(this::deleteBox))
                 .then(Commands.literal("deny")
                         .requires(this::requireBoxlessPlayer)
@@ -57,13 +58,35 @@ public class BoxedCommand {
                         )
                 )
                 .then(Commands.literal("invite")
-                        .requires(source -> this.requirePlayerWithBox(source) && this.requireOwner(source))
+                        .requires(this::requireOwner)
                         .then(Commands.argument("target", ArgumentTypes.player())
                                 .executes(this::invitePlayer)
                         )
                 )
+                .then(Commands.literal("kick")
+                        .requires(this::requireOwner)
+                        .then(Commands.argument("target", StringArgumentType.word())
+                                // Suggest every member of the box
+                                .suggests((ctx, builder) -> {
+                                    if (ctx.getSource().getSender() instanceof Player player
+                                            && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()) != null) {
+                                        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+                                        for (UUID member : box.getMembers()) {
+                                            builder.suggest(Bukkit.getOfflinePlayer(member).getName());
+                                        }
+
+                                    }
+
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::kickPlayerFromBox)
+                                .then(Commands.literal("confirm")
+                                        .executes(this::kickConfirmPlayerFromBox)
+                                )
+                        )
+                )
                 .then(Commands.literal("setname")
-                        .requires(source -> this.requirePlayerWithBox(source) && this.requireOwner(source))
+                        .requires(this::requireOwner)
                         .then(Commands.argument("box_name", StringArgumentType.greedyString())
                                 .executes(this::setBoxName)
                         )
@@ -88,7 +111,8 @@ public class BoxedCommand {
     }
 
     private boolean requireOwner(CommandSourceStack source) {
-        return source.getSender() instanceof Player player
+        return requirePlayerWithBox(source)
+                && source.getSender() instanceof Player player
                 && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()).getOwner().equals(player.getUniqueId());
     }
 
@@ -101,24 +125,24 @@ public class BoxedCommand {
         UUID boxUuid = UUID.fromString(StringArgumentType.getString(ctx, "box_uuid"));
         Box box = this.plugin.getBoxRegistry().getBoxByUuid(boxUuid);
 
-        if (box == null){
+        if (box == null) {
             player.sendPlainMessage("This box does not exist!");
             return Command.SINGLE_SUCCESS;
         }
 
         this.boxService.acceptInvitation(box, player.getUniqueId())
-            .thenAccept(success -> {
-                if (success) {
-                    player.sendPlainMessage("Invitation accepted ! Teleporting...");
-                } else {
-                    player.sendPlainMessage("This invitation is no longer valid or has expired.");
-                }
-            })
-            .exceptionally(ex -> {
-                this.plugin.getLogger().severe("Error accepting the box : " + ex.getMessage());
-                player.sendPlainMessage("An error occurred during registration.");
-                return null;
-            });
+                .thenAccept(success -> {
+                    if (success) {
+                        player.sendPlainMessage("Invitation accepted ! Teleporting...");
+                    } else {
+                        player.sendPlainMessage("This invitation is no longer valid or has expired.");
+                    }
+                })
+                .exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error accepting the box : " + ex.getMessage());
+                    player.sendPlainMessage("An error occurred during registration.");
+                    return null;
+                });
 
         return Command.SINGLE_SUCCESS;
     }
@@ -130,9 +154,7 @@ public class BoxedCommand {
         }
         String rawName = StringArgumentType.getString(ctx, "box_name");
 
-        this.boxService.createBox(rawName, player).thenAccept(box -> {
-            player.sendPlainMessage("Box created ! Teleporting...");
-        }).exceptionally(ex -> {
+        this.boxService.createBox(rawName, player).thenAccept(_ -> player.sendPlainMessage("Box created ! Teleporting...")).exceptionally(ex -> {
             this.plugin.getLogger().severe("Error when creating box : " + ex.getMessage());
             player.sendPlainMessage("Failed to create a box (please contact an administrator)");
             return null;
@@ -166,19 +188,18 @@ public class BoxedCommand {
         UUID boxUuid = UUID.fromString(rawUuid);
         Box box = this.plugin.getBoxRegistry().getBoxByUuid(boxUuid);
 
-        if (box == null){
+        if (box == null) {
             player.sendPlainMessage("This box does not exist!");
             return Command.SINGLE_SUCCESS;
         }
 
-        if (this.boxService.denyInvite(box, player.getUniqueId())){
+        if (this.boxService.denyInvite(box, player.getUniqueId())) {
             player.sendMessage(Component.text("You deny the invitation of ").append(box.getDisplayName()));
 
             OfflinePlayer target = Bukkit.getOfflinePlayer(player.getUniqueId());
             String targetName = target.getName() != null ? target.getName() : "A player";
             box.sendMessageToOwner(Component.text(targetName + " has denied the invitation !"));
-        }
-        else{
+        } else {
             player.sendPlainMessage("You are not invited to this box!");
         }
 
@@ -201,23 +222,22 @@ public class BoxedCommand {
         final Player target = players.getFirst();
 
         // Check if the player already have a box
-        if(JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(target.getUniqueId()) != null){
+        if (JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(target.getUniqueId()) != null) {
             player.sendPlainMessage("This player already have a box");
             return Command.SINGLE_SUCCESS;
-        }
-        else{
+        } else {
             Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
-            if(this.boxService.invitePlayer(plugin, box, player.getUniqueId(), target.getUniqueId())){
+            if (this.boxService.invitePlayer(plugin, box, player.getUniqueId(), target.getUniqueId())) {
 
                 // Send the message to the invited player
 
                 // Accept button
-                Component acceptButton = Component.text("accept", NamedTextColor.GREEN)
+                Component acceptButton = Component.text("Accept", NamedTextColor.GREEN)
                         .clickEvent(ClickEvent.runCommand("/box accept " + box.getUuid()))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to accept the invitation", NamedTextColor.GREEN)));
 
                 // Deny button
-                Component denyButton = Component.text("deny", NamedTextColor.RED)
+                Component denyButton = Component.text("Deny", NamedTextColor.RED)
                         .clickEvent(ClickEvent.runCommand("/box deny " + box.getUuid()))
                         .hoverEvent(HoverEvent.showText(Component.text("Click to deny the invitation", NamedTextColor.RED)));
 
@@ -242,11 +262,62 @@ public class BoxedCommand {
                 target.sendMessage(inviteMessage);
                 box.sendMessageToOwner(Component.text("Player invited!"));
 
-            }
-            else{
+            } else {
                 box.sendMessageToOwner(Component.text("Player already invited."));
             }
         }
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int kickPlayerFromBox(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only players can change kick a player out of a box!");
+            return Command.SINGLE_SUCCESS;
+        }
+        OfflinePlayer kickedPlayer = Bukkit.getOfflinePlayer(ctx.getArgument("target", String.class));
+
+        // Prepare message
+        Component message = Component.text("Do you really want to kick " + kickedPlayer.getName() + " out of this box?")
+                .appendNewline()
+                .append(Component.text("KICK IT", NamedTextColor.DARK_RED).decorate(TextDecoration.BOLD)
+                        .clickEvent(ClickEvent.runCommand("/box kick " + kickedPlayer.getName() + " confirm"))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to kick the player", NamedTextColor.RED))));
+
+        player.sendMessage(message);
+
+        return Command.SINGLE_SUCCESS;
+
+    }
+
+    private int kickConfirmPlayerFromBox(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only players can change kick a player out of a box!");
+            return Command.SINGLE_SUCCESS;
+        }
+        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+        OfflinePlayer kickedPlayer = Bukkit.getOfflinePlayer(ctx.getArgument("target", String.class));
+
+        // remove member from registry and database
+        this.boxService.removeMember(box, kickedPlayer.getUniqueId())
+                // Maybe delete his inventory (later)
+                .thenAccept(_ -> {
+                    if (kickedPlayer.isOnline()) {
+                        Player kickedPlayerOnline = kickedPlayer.getPlayer();
+                        if (kickedPlayerOnline != null) {
+                            kickedPlayerOnline.sendMessage(Component.text("You have been kicked from ").append(box.getDisplayName()));
+                            kickedPlayerOnline.teleport(Bukkit.getWorld("world").getSpawnLocation());
+                        }
+
+                    }
+                })
+                .exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error when kicking a player: " + ex.getMessage());
+                    player.sendPlainMessage("Failed to kick a player (please contact an administrator)");
+                    return null;
+                });
+        box.broadcastMessage(kickedPlayer.getName() + " has been kicked from the box");
+
 
         return Command.SINGLE_SUCCESS;
     }
@@ -306,8 +377,7 @@ public class BoxedCommand {
         Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
         if (box.isWorldLoaded(this.plugin)) {
             player.teleportAsync(box.getWorld(this.plugin).getSpawnLocation().toCenterLocation()).thenRun(() -> player.sendPlainMessage("Teleported to box !"));
-        }
-        else {
+        } else {
             player.sendPlainMessage("Loading world...");
             World world = box.loadWorld(this.plugin);
             player.teleportAsync(world.getSpawnLocation().toCenterLocation());
