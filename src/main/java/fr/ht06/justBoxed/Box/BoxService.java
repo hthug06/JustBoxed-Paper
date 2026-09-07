@@ -130,26 +130,29 @@ public class BoxService {
                 World world = box.getWorld(this.plugin);
                 if (world != null) {
                     Location targetLoc = world.getSpawnLocation().toCenterLocation();
-                    player.teleportAsync(targetLoc);
-                }
+                    player.teleportAsync(targetLoc)
+                            // Grant every advancement after teleporting in case the world the
+                            // player was in before has the gamerule show_advancement true
+                            .thenAccept(_ -> {
+                                // revoke every advancement
+                                Iterator<Advancement> revokeIterator = Bukkit.getServer().advancementIterator();
+                                while (revokeIterator.hasNext())
+                                {
+                                    AdvancementProgress progress = player.getAdvancementProgress(revokeIterator.next());
+                                    for (String criteria : progress.getAwardedCriteria())
+                                        progress.revokeCriteria(criteria);
+                                }
 
-                // revoke every advancement
-                Iterator<Advancement> revokeIterator = Bukkit.getServer().advancementIterator();
-                while (revokeIterator.hasNext())
-                {
-                    AdvancementProgress progress = player.getAdvancementProgress(revokeIterator.next());
-                    for (String criteria : progress.getAwardedCriteria())
-                        progress.revokeCriteria(criteria);
-                }
-
-                // Grant box advancement
-                for (NamespacedKey namespacedKey : box.getUnlockedAdvancements()) {
-                    Advancement advancement = Bukkit.getAdvancement(namespacedKey);
-                    if (advancement != null) {
-                        AdvancementProgress progress = player.getAdvancementProgress(advancement);
-                        for (String criteria : progress.getAwardedCriteria())
-                            progress.awardCriteria(criteria);
-                    }
+                                // Grant box advancement
+                                for (NamespacedKey namespacedKey : box.getUnlockedAdvancements()) {
+                                    Advancement advancement = Bukkit.getAdvancement(namespacedKey);
+                                    if (advancement != null) {
+                                        AdvancementProgress progress = player.getAdvancementProgress(advancement);
+                                        for (String criteria : advancement.getCriteria())
+                                            progress.awardCriteria(criteria);
+                                    }
+                                }
+                            });
                 }
 
                 box.broadcastMessage(player.name().append(Component.text(" has joined the box !")));
