@@ -8,9 +8,12 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
+import org.bukkit.advancement.Advancement;
+import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -133,7 +136,25 @@ public class BoxService {
                     player.teleportAsync(targetLoc);
                 }
 
-                box.broadcastMessage(player.getName() + " has joined the box !");
+                // revoke every advancement
+                Iterator<Advancement> revokeIterator = Bukkit.getServer().advancementIterator();
+                while (revokeIterator.hasNext())
+                {
+                    AdvancementProgress progress = player.getAdvancementProgress(revokeIterator.next());
+                    for (String criteria : progress.getAwardedCriteria())
+                        progress.revokeCriteria(criteria);
+                }
+
+                // Grant box advancement
+                Iterator<Advancement> grantIterator = box.getAdvancements().iterator();
+                while (grantIterator.hasNext())
+                {
+                    AdvancementProgress progress = player.getAdvancementProgress(grantIterator.next());
+                    for (String criteria : progress.getAwardedCriteria())
+                        progress.awardCriteria(criteria);
+                }
+
+                box.broadcastMessage(player.name().append(Component.text(" has joined the box !")));
             });
 
             return true;
@@ -147,5 +168,9 @@ public class BoxService {
 
         box.removeInvitation(targetUuid);
         return true;
+    }
+
+    public void grantAdvancement(Box box, Advancement advancement, Player getter){
+        box.grantAdvancement(advancement, getter);
     }
 }

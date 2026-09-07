@@ -5,6 +5,7 @@ import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.Box.BoxTemplate;
 import fr.ht06.justBoxed.Commands.AdminBoxedCommand;
 import fr.ht06.justBoxed.Commands.BoxedCommand;
+import fr.ht06.justBoxed.Listeners.PlayerListeners;
 import fr.ht06.justBoxed.Storage.BoxRepository;
 import fr.ht06.justBoxed.Storage.DatabaseManager;
 import io.papermc.paper.command.brigadier.Commands;
@@ -67,6 +68,9 @@ public final class JustBoxed extends JavaPlugin {
                     "Admin command for boxed plugin"
             );
         });
+
+        // Register Listeners / events
+        getServer().getPluginManager().registerEvents(new PlayerListeners(this, this.boxService, this.boxRegistry), this);
 
 
         // On first launch, create a template world with seed 8500081009970950196 (every biome and structure in 1000 blocks)

@@ -30,6 +30,8 @@ public class BoxTemplate {
             world.getWorldBorder().setCenter(17.5, -23.5);
             world.getWorldBorder().setSize(1);
             world.setSpawnLocation(new Location(world, 17.5, 63, -23.5, 0, 0));
+            world.setGameRule(GameRules.SHOW_ADVANCEMENT_MESSAGES, false);
+
             // Load the spawn chunk (async)
             world.getChunkAtAsync(17 >> 4, (-24) >> 4, true).thenAccept(_ -> {
                 // Back sync on the main thread for save and unload

@@ -22,6 +22,10 @@ public class BoxRegistry {
         }
     }
 
+    public boolean isPlayerHavingABox(UUID playerUuid){
+        return this.getBoxByPlayer(playerUuid) != null;
+    }
+
     public @Nullable Box getBoxByPlayer(UUID uuid) {
         UUID boxUuid = playerToBox.get(uuid);
         return boxUuid != null ? boxes.get(boxUuid) : null;

@@ -20,8 +20,11 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
+import org.bukkit.advancement.Advancement;
+import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -174,11 +177,23 @@ public class BoxedCommand {
         }
         String rawName = StringArgumentType.getString(ctx, "box_name");
 
-        this.boxService.createBox(rawName, player).thenAccept(_ -> player.sendPlainMessage("Box created ! Teleporting...")).exceptionally(ex -> {
-            this.plugin.getLogger().severe("Error when creating box : " + ex.getMessage());
-            player.sendPlainMessage("Failed to create a box (please contact an administrator)");
-            return null;
-        });
+        this.boxService.createBox(rawName, player)
+                .thenAccept(_ -> {
+                    player.sendPlainMessage("Box created ! Teleporting...");
+
+                    Iterator<Advancement> iterator = Bukkit.getServer().advancementIterator();
+                    while (iterator.hasNext())
+                    {
+                        AdvancementProgress progress = player.getAdvancementProgress(iterator.next());
+                        for (String criteria : progress.getAwardedCriteria())
+                            progress.revokeCriteria(criteria);
+                    }
+
+                }).exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error when creating box : " + ex.getMessage());
+                    player.sendPlainMessage("Failed to create a box (please contact an administrator)");
+                    return null;
+                });
 
         return Command.SINGLE_SUCCESS;
     }
@@ -336,7 +351,7 @@ public class BoxedCommand {
                     player.sendPlainMessage("Failed to kick a player (please contact an administrator)");
                     return null;
                 });
-        box.broadcastMessage(kickedPlayer.getName() + " has been kicked from the box");
+        box.broadcastMessage(Component.text(kickedPlayer.getName() + " has been kicked from the box"));
 
 
         return Command.SINGLE_SUCCESS;
@@ -378,7 +393,7 @@ public class BoxedCommand {
                     player.sendPlainMessage("Failed to leave the box (please contact an administrator)");
                     return null;
                 });
-        box.broadcastMessage(player.getName() +  "leaved the box...");
+        box.broadcastMessage(player.name().append(Component.text("leaved the box...")));
 
         return Command.SINGLE_SUCCESS;
     }

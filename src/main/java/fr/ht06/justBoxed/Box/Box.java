@@ -1,15 +1,16 @@
 package fr.ht06.justBoxed.Box;
 
 import fr.ht06.justBoxed.Box.Invitation.BoxInvite;
+import fr.ht06.justBoxed.JustBoxed;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
+import org.bukkit.advancement.Advancement;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /// Represents an isolated game box instance and its team data.
 ///
@@ -22,6 +23,8 @@ public class Box {
     private final List<UUID> members = new ArrayList<>();
 
     private final List<BoxInvite> invitedPlayers = new ArrayList<>();
+
+    private Set<Advancement> advancements = new HashSet<>();
 
     public Box(UUID uuid, Component displayName, UUID owner) {
         this.uuid = uuid;
@@ -61,6 +64,10 @@ public class Box {
         this.owner = owner;
     }
 
+    public Set<Advancement> getAdvancements() {
+        return advancements;
+    }
+
     public @Nullable World getWorld(Plugin plugin) {
         NamespacedKey key = new NamespacedKey(plugin, "box_" + this.uuid);
         return Bukkit.getWorld(key);
@@ -78,7 +85,11 @@ public class Box {
         }
 
         WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, "box_" + this.uuid.toString().toLowerCase()));
-        return creator.createWorld();
+        World world = creator.createWorld();
+
+        this.updateWorldBorder(plugin);
+
+        return world;
     }
 
     /// Unload a world and tp all the player to the world `world`
@@ -99,6 +110,13 @@ public class Box {
         return Bukkit.unloadWorld(world, false);
     }
 
+    public void updateWorldBorder(Plugin plugin){
+        if (this.isWorldLoaded(plugin)){
+            // World border need to have a minimum size of 1
+            this.getWorld(plugin).getWorldBorder().changeSize(1 + (this.advancements.size()*2), 20L);
+        }
+    }
+
     public boolean isInvited(UUID playerUUID){
         return this.invitedPlayers.stream().anyMatch(invite -> invite.getTargetUuid().equals(playerUUID));
     }
@@ -117,21 +135,46 @@ public class Box {
         });
     }
 
-    public void broadcastMessage(String message){
+    public void broadcastMessage(Component message){
         for (UUID uuid : this.members){
             Player p = Bukkit.getPlayer(uuid);
             if (p != null && p.isOnline())
-                p.sendPlainMessage(message);
+                p.sendMessage(message);
         }
 
         Player player = Bukkit.getPlayer(this.owner);
         if (player != null && player.isOnline())
-            player.sendPlainMessage(message);
+            player.sendMessage(message);
     }
 
     public void sendMessageToOwner(Component message){
         Player player = Bukkit.getPlayer(this.owner);
         if (player != null && player.isOnline())
             player.sendMessage(message);
+    }
+
+    public void grantAdvancement(@NotNull Advancement advancement, Player getter){
+        if (this.advancements.contains(advancement)) return;
+
+        this.advancements.add(advancement);
+
+        // Send message to players
+        this.broadcastMessage(getter.name().append(Component.text(" get the advancement ").append(advancement.displayName())));
+        this.members
+                .stream()
+                .filter(member -> {
+                    Player player = Bukkit.getPlayer(member);
+                    return player != null && player.isOnline() && member != getter.getUniqueId();
+                })
+                .map(Bukkit::getPlayer)
+                .forEach(player -> {
+                    for (String criteria: advancement.getCriteria())
+                        player.getAdvancementProgress(advancement).awardCriteria(criteria);
+                });
+
+        // Update world if loaded
+        this.updateWorldBorder(JustBoxed.getInstance());
+
+
     }
 }
