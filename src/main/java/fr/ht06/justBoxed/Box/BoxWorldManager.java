@@ -90,13 +90,8 @@ public class BoxWorldManager {
 
     /// Delete a box by deleting all the files
     public static void deleteBox(Plugin plugin, Box box) {
-        World world = box.getWorld(plugin);
-
         // Unload World
-        if (!box.unloadWorld(plugin)) {
-            plugin.getLogger().warning("Failed to unload world for box " + box.getUuid());
-            return;
-        }
+        box.unloadWorld(plugin);
 
         Path dimensionsFolder = Bukkit.getWorldContainer().toPath()
                 .resolve("world")

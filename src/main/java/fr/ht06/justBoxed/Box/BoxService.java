@@ -4,10 +4,7 @@ import fr.ht06.justBoxed.Box.Invitation.BoxInvite;
 import fr.ht06.justBoxed.Storage.BoxRepository;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
+import org.bukkit.*;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
@@ -146,12 +143,13 @@ public class BoxService {
                 }
 
                 // Grant box advancement
-                Iterator<Advancement> grantIterator = box.getAdvancements().iterator();
-                while (grantIterator.hasNext())
-                {
-                    AdvancementProgress progress = player.getAdvancementProgress(grantIterator.next());
-                    for (String criteria : progress.getAwardedCriteria())
-                        progress.awardCriteria(criteria);
+                for (NamespacedKey namespacedKey : box.getUnlockedAdvancements()) {
+                    Advancement advancement = Bukkit.getAdvancement(namespacedKey);
+                    if (advancement != null) {
+                        AdvancementProgress progress = player.getAdvancementProgress(advancement);
+                        for (String criteria : progress.getAwardedCriteria())
+                            progress.awardCriteria(criteria);
+                    }
                 }
 
                 box.broadcastMessage(player.name().append(Component.text(" has joined the box !")));
@@ -171,6 +169,34 @@ public class BoxService {
     }
 
     public void grantAdvancement(Box box, Advancement advancement, Player getter){
-        box.grantAdvancement(advancement, getter);
+        NamespacedKey key = advancement.getKey();
+
+        if (!box.addAdvancement(key)) {
+            return;
+        }
+
+        Component msg = getter.name()
+                .append(Component.text(" unlocked the advancement "))
+                .append(advancement.displayName());
+        box.broadcastMessage(msg);
+
+        // sync every player
+        for (UUID memberUuid : box.getAllMembersWithLeader()) {
+            if (memberUuid.equals(getter.getUniqueId())) {
+                continue;
+            }
+
+            Player player = Bukkit.getPlayer(memberUuid);
+            if (player != null && player.isOnline()) {
+                AdvancementProgress progress = player.getAdvancementProgress(advancement);
+                for (String criteria : advancement.getCriteria()) {
+                    if (!progress.getAwardedCriteria().contains(criteria)) {
+                        progress.awardCriteria(criteria);
+                    }
+                }
+            }
+        }
+
+        box.updateWorldBorder(this.plugin);
     }
 }

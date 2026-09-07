@@ -153,6 +153,7 @@ public class BoxedCommand {
             return Command.SINGLE_SUCCESS;
         }
 
+        // TODO Add every advancement of the box
         this.boxService.acceptInvitation(box, player.getUniqueId())
                 .thenAccept(success -> {
                     if (success) {
@@ -341,7 +342,7 @@ public class BoxedCommand {
                         Player kickedPlayerOnline = kickedPlayer.getPlayer();
                         if (kickedPlayerOnline != null) {
                             kickedPlayerOnline.sendMessage(Component.text("You have been kicked from ").append(box.getDisplayName()));
-                            kickedPlayerOnline.teleport(Bukkit.getWorld("world").getSpawnLocation());
+                            kickedPlayerOnline.teleportAsync(Bukkit.getWorld("world").getSpawnLocation());
                         }
 
                     }
