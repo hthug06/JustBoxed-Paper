@@ -1,6 +1,5 @@
-package fr.ht06.justBoxed.Box.Invitation;
+package fr.ht06.justBoxed.Box;
 
-import fr.ht06.justBoxed.Box.Box;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;

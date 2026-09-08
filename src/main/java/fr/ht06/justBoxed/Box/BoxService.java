@@ -1,10 +1,8 @@
 package fr.ht06.justBoxed.Box;
 
-import fr.ht06.justBoxed.Box.Invitation.BoxInvite;
 import fr.ht06.justBoxed.JustBoxed;
 import fr.ht06.justBoxed.Storage.BoxRepository;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.*;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
