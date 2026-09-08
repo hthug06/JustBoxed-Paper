@@ -21,10 +21,13 @@ public class AdminBoxedCommand {
     }
 
     public LiteralArgumentBuilder<CommandSourceStack> createCommand() {
-        return Commands.literal("abox").requires(source -> source.getSender().isOp())
+        return Commands.literal("abox")
+                .requires(source -> source.getSender().isOp())
                 .then(Commands.literal("change_world")
                         .then(Commands.argument("world", ArgumentTypes.world())
-                                .executes(this::executeChangeWorld)));
+                                .executes(this::executeChangeWorld)
+                        )
+                );
     }
 
     public int executeChangeWorld(CommandContext<CommandSourceStack> ctx) {

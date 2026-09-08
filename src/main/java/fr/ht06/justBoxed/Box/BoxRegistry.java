@@ -1,6 +1,7 @@
 package fr.ht06.justBoxed.Box;
 
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.NamespacedKey;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
@@ -67,5 +68,10 @@ public class BoxRegistry {
         for (Box box : boxes.values()) {
             box.removeInvitation(targetUuid);
         }
+    }
+
+    /// Add an advancement to a box
+    public void addAvancement(UUID boxUuid, NamespacedKey namespacedKey){
+        this.boxes.get(boxUuid).addAdvancement(namespacedKey);
     }
 }

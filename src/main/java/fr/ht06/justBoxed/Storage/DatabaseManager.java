@@ -19,7 +19,7 @@ public class DatabaseManager {
         this.plugin = plugin;
     }
 
-    /// Create the database with tables and open a UNIQUE connection
+    /// Create the database with tables and open a connection
     public void init() throws SQLException, IOException, ClassNotFoundException {
         File dataFolder = plugin.getDataFolder();
         if (!dataFolder.exists() && !dataFolder.mkdirs()) {
@@ -56,6 +56,21 @@ public class DatabaseManager {
                     FOREIGN KEY (box_uuid) REFERENCES boxes(box_uuid) ON DELETE CASCADE
                 );
             """);
+
+            // box_advancements table
+            // Contains every box with all their advancement
+            // Link to a box | 1 box -> N advancement
+            statement.execute("""
+                CREATE TABLE IF NOT EXISTS box_advancements (
+                    box_uuid TEXT NOT NULL,
+                    advancement_key TEXT NOT NULL,
+                    unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (box_uuid, advancement_key),
+                    FOREIGN KEY (box_uuid) REFERENCES boxes(box_uuid) ON DELETE CASCADE
+                );
+            """);
+
+
         }
     }
 

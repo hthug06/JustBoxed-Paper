@@ -4,6 +4,7 @@ import fr.ht06.justBoxed.Box.Box;
 import fr.ht06.justBoxed.Box.BoxRegistry;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.Plugin;
 
 import java.sql.*;
@@ -26,6 +27,7 @@ public class BoxRepository {
             Connection conn = dbManager.getConnection();
             String queryBoxes = "SELECT box_uuid, display_name, owner_uuid FROM boxes";
             String queryMembers = "SELECT box_uuid, player_uuid FROM box_members";
+            String queryAdvancements = "SELECT advancement_key, box_uuid FROM box_advancements";
 
             try {
                 // Load every box first
@@ -40,7 +42,7 @@ public class BoxRepository {
                     }
                 }
 
-                // And then load every member
+                // Load every member
                 try (PreparedStatement ps = conn.prepareStatement(queryMembers);
                      ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
@@ -52,6 +54,20 @@ public class BoxRepository {
                         }
                     }
                 }
+
+                // Load every advancement of boxes
+                try (PreparedStatement ps = conn.prepareStatement(queryAdvancements);
+                     ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        UUID boxUuid = UUID.fromString(rs.getString("box_uuid"));
+                        NamespacedKey advancementKey = NamespacedKey.fromString(rs.getString("advancement_key"));
+
+                        if (registry.getBoxByUuid(boxUuid) != null) {
+                            registry.addAvancement(boxUuid, advancementKey);
+                        }
+                    }
+                }
+
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error when loading boxes: " + e.getMessage());
             }
@@ -63,6 +79,8 @@ public class BoxRepository {
         return CompletableFuture.runAsync(() -> {
             String insertBox = "INSERT OR REPLACE INTO boxes (box_uuid, display_name, owner_uuid) VALUES (?, ?, ?)";
             String insertMember = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
+            String insertAdvancement = "INSERT OR IGNORE INTO box_advancements (box_uuid, advancement_key) VALUES (?, ?)";
+
             Connection conn = dbManager.getConnection();
             try {
                 conn.setAutoCommit(false);
@@ -83,6 +101,16 @@ public class BoxRepository {
                         psMember.addBatch();
                     }
                     psMember.executeBatch();
+                }
+
+                // Box advancement
+                try (PreparedStatement psAdvancement = conn.prepareStatement(insertAdvancement)) {
+                    for (NamespacedKey key : box.getUnlockedAdvancements()) {
+                        psAdvancement.setString(1, box.getUuid().toString());
+                        psAdvancement.setString(2, key.asString());
+                        psAdvancement.addBatch();
+                    }
+                    psAdvancement.executeBatch();
                 }
 
                 conn.commit();
@@ -153,6 +181,21 @@ public class BoxRepository {
                 ps.executeUpdate();
             } catch (SQLException e) {
                 plugin.getLogger().severe("Error when updating box display name : " + e.getMessage());
+            }
+        });
+    }
+
+    public CompletableFuture<Void> saveAdvancement(UUID boxUuid, NamespacedKey advancementKey) {
+        return CompletableFuture.runAsync(() -> {
+            String sql = "INSERT OR IGNORE INTO box_advancements (box_uuid, advancement_key) VALUES (?, ?)";
+
+            Connection conn = dbManager.getConnection();
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, boxUuid.toString());
+                ps.setString(2, advancementKey.toString());
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().severe("Failed to save advancement to the db: " + e.getMessage());
             }
         });
     }

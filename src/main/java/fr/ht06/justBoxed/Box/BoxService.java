@@ -1,6 +1,7 @@
 package fr.ht06.justBoxed.Box;
 
 import fr.ht06.justBoxed.Box.Invitation.BoxInvite;
+import fr.ht06.justBoxed.JustBoxed;
 import fr.ht06.justBoxed.Storage.BoxRepository;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -88,8 +89,7 @@ public class BoxService {
     public boolean invitePlayer(Plugin plugin, Box box, UUID inviterUuid, UUID targetUuid) {
         if (box.isInvited(targetUuid)) {
             return false;
-        }
-        else{
+        } else {
             box.addInvitation(new BoxInvite(plugin, box, inviterUuid, targetUuid, () -> {
                 box.removeInvitation(targetUuid);
 
@@ -136,8 +136,7 @@ public class BoxService {
                             .thenAccept(_ -> {
                                 // revoke every advancement
                                 Iterator<Advancement> revokeIterator = Bukkit.getServer().advancementIterator();
-                                while (revokeIterator.hasNext())
-                                {
+                                while (revokeIterator.hasNext()) {
                                     AdvancementProgress progress = player.getAdvancementProgress(revokeIterator.next());
                                     for (String criteria : progress.getAwardedCriteria())
                                         progress.revokeCriteria(criteria);
@@ -171,19 +170,27 @@ public class BoxService {
         return true;
     }
 
-    public void grantAdvancement(Box box, Advancement advancement, Player getter){
+    public CompletableFuture<Void> grantAdvancement(Box box, Advancement advancement, Player getter) {
         NamespacedKey key = advancement.getKey();
 
         if (!box.addAdvancement(key)) {
-            return;
+            return CompletableFuture.completedFuture(null);
         }
 
-        Component msg = getter.name()
-                .append(Component.text(" unlocked the advancement "))
-                .append(advancement.displayName());
-        box.broadcastMessage(msg);
+        return this.repository.saveAdvancement(box.getUuid(), key)
+                .thenAccept(_ -> plugin.getServer().getScheduler().runTask(plugin, () -> {
+                    // sync every player
+                    this.syncPlayerAdvancement(box, advancement, getter);
 
-        // sync every player
+                    box.updateWorldBorder(this.plugin);
+                }))
+                .exceptionally(ex -> {
+                    JustBoxed.getInstance().getLogger().severe("Failed to grant advancement : " + ex.getMessage());
+                    return null;
+                });
+    }
+
+    private void syncPlayerAdvancement(Box box, Advancement advancement, Player getter){
         for (UUID memberUuid : box.getAllMembersWithLeader()) {
             if (memberUuid.equals(getter.getUniqueId())) {
                 continue;
@@ -199,7 +206,5 @@ public class BoxService {
                 }
             }
         }
-
-        box.updateWorldBorder(this.plugin);
     }
 }
