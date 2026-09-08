@@ -1,5 +1,6 @@
 package fr.ht06.justBoxed.Box;
 
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.NamespacedKey;
 import org.jspecify.annotations.Nullable;
@@ -60,8 +61,8 @@ public class BoxRegistry {
         this.boxes.get(boxUuid).removeMember(memberUuid);
     }
 
-    public void updateDisplayName(UUID boxUuid, String displayName) {
-        this.boxes.get(boxUuid).setDisplayName(MiniMessage.miniMessage().deserialize(displayName));
+    public void updateDisplayName(UUID boxUuid, Component displayName) {
+        this.boxes.get(boxUuid).setDisplayName(displayName);
     }
 
     public void removeInvitation(UUID targetUuid) {

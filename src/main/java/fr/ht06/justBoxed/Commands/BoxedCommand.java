@@ -19,6 +19,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
@@ -190,9 +191,9 @@ public class BoxedCommand {
             ctx.getSource().getSender().sendPlainMessage("Only players can create a box!");
             return Command.SINGLE_SUCCESS;
         }
-        String rawName = StringArgumentType.getString(ctx, "box_name");
+        Component displayName = MiniMessage.miniMessage().deserialize(ctx.getArgument("box_name", String.class));
 
-        this.boxService.createBox(rawName, player)
+        this.boxService.createBox(displayName, player)
                 .thenAccept(_ -> {
                     player.sendPlainMessage("Box created ! Teleporting...");
 
@@ -422,7 +423,9 @@ public class BoxedCommand {
         }
 
         Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
-        this.boxService.setBoxName(box, ctx.getArgument("box_name", String.class))
+        Component displayName = MiniMessage.miniMessage().deserialize(ctx.getArgument("box_name", String.class));
+
+        this.boxService.setBoxName(box, displayName)
                 .thenAccept(_ -> player.sendMessage(Component.text("Box name changed : ").append(box.getDisplayName())))
                 .exceptionally(ex -> {
                     this.plugin.getLogger().severe("Error when changing team name : " + ex.getMessage());

@@ -198,13 +198,13 @@ public class BoxRepository {
      * @param boxUuid the unique identifier of the box whose display name is to be updated
      * @param displayName the new display name to
      */
-    public CompletableFuture<Void> updateDisplayName(UUID boxUuid, String displayName) {
+    public CompletableFuture<Void> updateDisplayName(UUID boxUuid, Component displayName) {
         return CompletableFuture.runAsync(() -> {
             String sql = "UPDATE boxes SET display_name = ? WHERE box_uuid = ?";
             Connection conn = dbManager.getConnection();
 
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, displayName);
+                ps.setString(1, MiniMessage.miniMessage().serialize(displayName));
                 ps.setString(2, boxUuid.toString());
                 ps.executeUpdate();
             } catch (SQLException e) {

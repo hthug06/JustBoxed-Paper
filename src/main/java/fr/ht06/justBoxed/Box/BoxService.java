@@ -30,9 +30,8 @@ public class BoxService {
     }
 
     /// Create a new box: Instantiates the entity, clones the world, saves to RAM and persists in SQLite
-    public CompletableFuture<Box> createBox(String rawName, Player owner) {
+    public CompletableFuture<Box> createBox(Component displayName, Player owner) {
         UUID boxUuid = UUID.randomUUID();
-        Component displayName = MiniMessage.miniMessage().deserialize(rawName);
 
         Box box = new Box(boxUuid, displayName, owner.getUniqueId());
 
@@ -105,7 +104,7 @@ public class BoxService {
         return repository.removeMember(box.getUuid(), memberUuid);
     }
 
-    public CompletableFuture<Void> setBoxName(Box box, String teamName) {
+    public CompletableFuture<Void> setBoxName(Box box, Component teamName) {
         registry.updateDisplayName(box.getUuid(), teamName);
         return repository.updateDisplayName(box.getUuid(), teamName);
     }
