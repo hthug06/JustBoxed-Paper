@@ -102,14 +102,16 @@ public class BoxWorldManager {
                 .resolve("justboxed");
         Path targetDir = dimensionsFolder.resolve("box_" + box.getUuid());
 
-        // Delete folder Async
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                deleteDirectoryRecursively(targetDir);
-            } catch (IOException e) {
-                plugin.getLogger().severe("Failed to delete files in world : " + e.getMessage());
-            }
-        });
+        // Wait 1 second for the world to be fully unloaded before deleting the files
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    deleteDirectoryRecursively(targetDir);
+                } catch (IOException e) {
+                    plugin.getLogger().severe("Failed to delete world directory for box " + box.getUuid() + ": " + e.getMessage());
+                }
+            });
+        }, 20L);
     }
 
     private static void deleteDirectoryRecursively(Path path) throws IOException {
@@ -119,7 +121,17 @@ public class BoxWorldManager {
         Files.walkFileTree(path, new SimpleFileVisitor<>() {
             @Override
             public @NonNull FileVisitResult visitFile(@NonNull Path file, @NonNull BasicFileAttributes attrs) throws IOException {
-                Files.delete(file);
+                try {
+                    Files.delete(file);
+                } catch (IOException e) {
+                    // Pause if a lock persists
+                    try {
+                        Thread.sleep(50);
+                        Files.delete(file);
+                    } catch (InterruptedException | IOException ex) {
+                        throw new IOException("Failed to delete locked file: " + file, ex);
+                    }
+                }
                 return FileVisitResult.CONTINUE;
             }
 
