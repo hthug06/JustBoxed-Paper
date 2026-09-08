@@ -56,17 +56,23 @@ public class BoxRegistry {
     /// Add a member into the box.
     public void addMember(UUID boxUuid, UUID memberUuid) {
         playerToBox.put(memberUuid, boxUuid);
-        this.boxes.get(boxUuid).addMember(memberUuid);
+        Box box = this.boxes.get(boxUuid);
+        if (box != null)
+            box.addMember(memberUuid);
     }
 
     /// Remove a member from the box.
     public void removeMember(UUID boxUuid, UUID memberUuid) {
         playerToBox.remove(memberUuid);
-        this.boxes.get(boxUuid).removeMember(memberUuid);
+        Box box = this.boxes.get(boxUuid);
+        if (box != null)
+            box.removeMember(memberUuid);
     }
 
     public void updateDisplayName(UUID boxUuid, Component displayName) {
-        this.boxes.get(boxUuid).setDisplayName(displayName);
+        Box box = this.boxes.get(boxUuid);
+        if (box != null)
+            box.setDisplayName(displayName);
     }
 
     public void removeInvitation(UUID targetUuid) {
@@ -75,9 +81,11 @@ public class BoxRegistry {
         }
     }
 
-    /// Add an advancement to a box
+    /// Add advancement to a box
     public void addAvancement(UUID boxUuid, NamespacedKey namespacedKey){
-        this.boxes.get(boxUuid).addAdvancement(namespacedKey);
+        Box box = this.boxes.get(boxUuid);
+        if (box != null)
+            box.addAdvancement(namespacedKey);
     }
 
     /// Return the previous owner
