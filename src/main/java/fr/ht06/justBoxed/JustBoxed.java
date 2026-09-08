@@ -17,8 +17,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
-
 public final class JustBoxed extends JavaPlugin {
 
     private DatabaseManager databaseManager;
@@ -47,9 +45,7 @@ public final class JustBoxed extends JavaPlugin {
             boxRepository = new BoxRepository(this, this.databaseManager);
 
             // Loading async in RAM
-            boxRepository.loadAll(this.boxRegistry).thenRun(() -> {
-                getLogger().info("Successfully loading boxes !");
-            });
+            boxRepository.loadAll(this.boxRegistry).thenRun(() -> getLogger().info("Successfully loading boxes !"));
         } catch (Exception e) {
             getLogger().severe("Critical error when initializing SQLite : " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);

@@ -102,15 +102,13 @@ public class BoxWorldManager {
         Path targetDir = dimensionsFolder.resolve("box_" + box.getUuid());
 
         // Wait 1 second for the world to be fully unloaded before deleting the files
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-                try {
-                    deleteDirectoryRecursively(targetDir);
-                } catch (IOException e) {
-                    plugin.getLogger().severe("Failed to delete world directory for box " + box.getUuid() + ": " + e.getMessage());
-                }
-            });
-        }, 20L);
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                deleteDirectoryRecursively(targetDir);
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to delete world directory for box " + box.getUuid() + ": " + e.getMessage());
+            }
+        }), 20L);
     }
 
     private static void deleteDirectoryRecursively(Path path) throws IOException {
