@@ -18,10 +18,14 @@ public class BoxTemplate {
     public static final String TEMPLATE_WORLD_NAME = "box_template";
     public static final long TEMPLATE_WORLD_SEED = 8500081009970950196L;
 
+    public static NamespacedKey getKey(Plugin plugin) {
+        return new NamespacedKey(plugin, TEMPLATE_WORLD_NAME);
+    }
+
     /// Create the template world, load the spawn chunk, and unload the world
     public static void create(Plugin plugin) {
         // Create the template world with his seed and various configs
-        WorldCreator creator = WorldCreator.ofKey(NamespacedKey.fromString(TEMPLATE_WORLD_NAME, plugin));
+        WorldCreator creator = WorldCreator.ofKey(getKey(plugin));
         creator.seed(TEMPLATE_WORLD_SEED);
         World world = creator.createWorld();
 
@@ -33,10 +37,10 @@ public class BoxTemplate {
             world.setGameRule(GameRules.SHOW_ADVANCEMENT_MESSAGES, false);
 
             // Load the spawn chunk (async)
-            world.getChunkAtAsync(17 >> 4, (-24) >> 4, true).thenAccept(_ -> {
-                // Back sync on the main thread for save and unload
-                plugin.getServer().getScheduler().runTask(plugin, () -> Bukkit.unloadWorld(world, true));
-            });
+            world.getChunkAt(17 >> 4, (-24) >> 4, true);
+
+            // Save and load just after
+            Bukkit.unloadWorld(world, true);
         } else {
             JustBoxed.getInstance().getLogger().severe("Cannot unload Template world, world is null");
         }
@@ -46,12 +50,11 @@ public class BoxTemplate {
     /// Check if the template world exist by checking:
     /// - If the world is loaded in memory
     /// - If the world folder exists on disk
-    public static boolean exist() {
-        // Check if the world is already loaded.
-        // IT SHOULD NOT BE LOADED, so if it is, unload it.
-        if (Bukkit.getWorld(TEMPLATE_WORLD_NAME) != null) {
-            Bukkit.unloadWorld(TEMPLATE_WORLD_NAME, true);
-            return true;
+    public static boolean exist(Plugin plugin) {
+        // Unload world if he was loaded
+        World world = Bukkit.getWorld(getKey(plugin));
+        if (world != null) {
+            Bukkit.unloadWorld(world, true);
         }
 
         // Check if the world folder exists on disk
