@@ -114,7 +114,7 @@ public class Box {
         World world = this.getWorld(plugin);
 
         // Put player on the base world
-        Location fallbackSpawn = Bukkit.getWorld("world").getSpawnLocation();
+        Location fallbackSpawn = Bukkit.getWorlds().getFirst().getSpawnLocation();
         for (Player p : world.getPlayers()) {
             p.teleport(fallbackSpawn);
         }
