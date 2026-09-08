@@ -114,9 +114,10 @@ public class Box {
     }
 
     public void updateWorldBorder(Plugin plugin){
-        if (this.isWorldLoaded(plugin)){
+        World world = this.getWorld(plugin);
+        if (world != null) {
             // World border need to have a minimum size of 1
-            this.getWorld(plugin).getWorldBorder().changeSize(1 + (this.unlockedAdvancements.size()*2), 20L);
+            world.getWorldBorder().changeSize(1 + (this.unlockedAdvancements.size() * 2.0), 20L);
         }
     }
 
@@ -138,16 +139,19 @@ public class Box {
         });
     }
 
+    public void clearInvitations() {
+        for (BoxInvite invite : this.invitedPlayers) {
+            invite.cancel();
+        }
+        this.invitedPlayers.clear();
+    }
+
     public void broadcastMessage(Component message){
-        for (UUID uuid : this.members){
+        for (UUID uuid : this.getAllMembersWithLeader()){
             Player p = Bukkit.getPlayer(uuid);
             if (p != null && p.isOnline())
                 p.sendMessage(message);
         }
-
-        Player player = Bukkit.getPlayer(this.owner);
-        if (player != null && player.isOnline())
-            player.sendMessage(message);
     }
 
     public void sendMessageToOwner(Component message){

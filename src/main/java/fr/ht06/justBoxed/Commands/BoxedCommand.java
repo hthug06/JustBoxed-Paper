@@ -153,7 +153,6 @@ public class BoxedCommand {
             return Command.SINGLE_SUCCESS;
         }
 
-        // TODO Add every advancement of the box
         this.boxService.acceptInvitation(box, player.getUniqueId())
                 .thenAccept(success -> {
                     if (success) {

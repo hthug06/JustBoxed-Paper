@@ -93,6 +93,9 @@ public class BoxWorldManager {
         // Unload World
         box.unloadWorld(plugin);
 
+        // Clear pending invitation
+        box.clearInvitations();
+
         Path dimensionsFolder = Bukkit.getWorldContainer().toPath()
                 .resolve("world")
                 .resolve("dimensions")
