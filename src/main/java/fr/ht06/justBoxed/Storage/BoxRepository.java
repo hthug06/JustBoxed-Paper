@@ -139,9 +139,8 @@ public class BoxRepository {
      * @param boxUuid the uuid of the box to delete
      */
     public CompletableFuture<Void> deleteBox(UUID boxUuid) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String delete = "DELETE FROM boxes WHERE box_uuid = ?";
-            Connection conn = dbManager.getConnection();
 
             try (PreparedStatement ps = conn.prepareStatement(delete)) {
                 ps.setString(1, boxUuid.toString().toLowerCase());
@@ -159,9 +158,8 @@ public class BoxRepository {
      * @param playerUuid the uuid of the player to add
      */
     public CompletableFuture<Void> addMember(UUID boxUuid, UUID playerUuid) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String sql = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
-            Connection conn = dbManager.getConnection();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, boxUuid.toString());
                 ps.setString(2, playerUuid.toString());
@@ -179,9 +177,8 @@ public class BoxRepository {
      * @param playerUuid the uuid of the player to remove
      */
     public CompletableFuture<Void> removeMember(UUID boxUuid, UUID playerUuid) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String sql = "DELETE FROM box_members WHERE box_uuid = ? AND player_uuid = ?";
-            Connection conn = dbManager.getConnection();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, boxUuid.toString());
                 ps.setString(2, playerUuid.toString());
@@ -199,9 +196,8 @@ public class BoxRepository {
      * @param displayName the new display name to
      */
     public CompletableFuture<Void> updateDisplayName(UUID boxUuid, Component displayName) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String sql = "UPDATE boxes SET display_name = ? WHERE box_uuid = ?";
-            Connection conn = dbManager.getConnection();
 
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, MiniMessage.miniMessage().serialize(displayName));
@@ -220,10 +216,9 @@ public class BoxRepository {
      * @param advancementKey the unique identifier of the advancement to be saved
      */
     public CompletableFuture<Void> saveAdvancement(UUID boxUuid, NamespacedKey advancementKey) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String sql = "INSERT OR IGNORE INTO box_advancements (box_uuid, advancement_key) VALUES (?, ?)";
 
-            Connection conn = dbManager.getConnection();
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, boxUuid.toString());
                 ps.setString(2, advancementKey.toString());
@@ -242,11 +237,10 @@ public class BoxRepository {
      * @param previousOwner the UUID of the previous owner
      */
     public CompletableFuture<Void> setOwner(Box box, UUID newOwnerUuid, UUID previousOwner) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String updateOwner = "UPDATE boxes SET owner_uuid = ? WHERE box_uuid = ?";
             String setPreviousOwnerAsAMember = "UPDATE box_members SET player_uuid = ? WHERE box_uuid = ? AND player_uuid = ?";
 
-            Connection conn = dbManager.getConnection();
             try {
                 conn.setAutoCommit(false);
 
