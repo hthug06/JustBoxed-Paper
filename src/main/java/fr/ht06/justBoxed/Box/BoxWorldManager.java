@@ -51,18 +51,17 @@ public class BoxWorldManager {
                 });
             } catch (IOException e) {
                 plugin.getLogger().severe("Error when creating the box " + box.getUuid().toString().toLowerCase() + " : " + e.getMessage() + "(invalid path)");
+
+                // Delete it if the world failed to create
+                try {
+                    deleteDirectoryRecursively(targetDir);
+                } catch (IOException ignored) {}
+
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     if (onComplete != null) {
                         onComplete.accept(null);
                     }
                 });
-
-                // Delete it if the world failed to create
-                Path deleteDimensionsFolder = Bukkit.getWorldContainer().toPath()
-                        .resolve("world")
-                        .resolve("dimensions")
-                        .resolve("justboxed");
-                Path deleteTargetDir = dimensionsFolder.resolve("box_" + box.getUuid());
             }
         });
     }
