@@ -9,17 +9,45 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class DatabaseManager {
 
     private final Plugin plugin;
     private Connection connection;
+    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "JustBoxed-SQLite-Thread");
+        t.setDaemon(true);
+        return t;
+    });
 
     public DatabaseManager(Plugin plugin) {
         this.plugin = plugin;
     }
 
-    /// Create the database with tables and open a connection
+    /**
+     * Initializes the database manager by setting up essential resources and configurations.
+     *
+     * <ul>
+     *   <li>Ensures the plugin's data folder exists. If it does not exist, attempts to create it.
+     *       Throws an {@link IOException} if the folder creation fails.</li>
+     *   <li>Loads the SQLite JDBC driver class and establishes a database connection to
+     *       a file-based SQLite database located at "plugins/JustBoxed/data.db".</li>
+     *   <li>Enables foreign key constraints for the SQLite database by executing the necessary
+     *       PRAGMA command.</li>
+     *   <li>Invokes the {@code createTables} method to ensure all required database tables
+     *       are created if they do not already exist.</li>
+     * </ul>
+     *
+     * @throws SQLException if a database access error occurs during connection setup
+     *                      or table creation.
+     * @throws IOException if the plugin's data folder cannot be created.
+     * @throws ClassNotFoundException if the SQLite JDBC driver class is not found on the classpath.
+     */
     public void init() throws SQLException, IOException, ClassNotFoundException {
         File dataFolder = plugin.getDataFolder();
         if (!dataFolder.exists() && !dataFolder.mkdirs()) {
@@ -30,6 +58,7 @@ public class DatabaseManager {
         this.connection = DriverManager.getConnection("jdbc:sqlite:plugins/JustBoxed/data.db");
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("PRAGMA foreign_keys = ON;");
+            stmt.execute("PRAGMA journal_mode = WAL;");
         }
 
         createTables();
@@ -75,20 +104,25 @@ public class DatabaseManager {
     }
 
     public Connection getConnection() {
-        try {
-            if (this.connection == null || this.connection.isClosed()) {
-                File dbFile = new File(plugin.getDataFolder(), "data.db");
-                String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
-                this.connection = DriverManager.getConnection(url);
-            }
-        } catch (SQLException e) {
-            plugin.getLogger().severe("Failed to get SQLite connection : " + e.getMessage());
-            plugin.getServer().getPluginManager().disablePlugin(JustBoxed.getInstance());
-        }
         return this.connection;
     }
 
+    /**
+     * Execute a writing task to the database on the SQLite thread
+     *
+     * @param action the {@link Consumer} that accepts a {@link Connection} and defines the operation
+     *               to be performed asynchronously
+     * @return a {@link CompletableFuture} that completes when the asynchronous operation finishes
+     */
+    public CompletableFuture<Void> runAsync(Consumer<Connection> action) {
+        return CompletableFuture.runAsync(() -> action.accept(getConnection()), dbExecutor);
+    }
+
+    /**
+     * Close the database connection and shutdown the executor
+     */
     public void close() {
+        dbExecutor.shutdown();
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();

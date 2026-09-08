@@ -23,10 +23,13 @@ public class BoxRepository {
         this.dbManager = dbManager;
     }
 
-    /// Load everything from the db into the memory
+    /**
+     * Load everything from the db into the memory
+     *
+     * @param registry the registry to load the boxes into
+     */
     public CompletableFuture<Void> loadAll(BoxRegistry registry) {
-        return CompletableFuture.runAsync(() -> {
-            Connection conn = dbManager.getConnection();
+        return dbManager.runAsync(conn -> {
             String queryBoxes = "SELECT box_uuid, display_name, owner_uuid FROM boxes";
             String queryMembers = "SELECT box_uuid, player_uuid FROM box_members";
             String queryAdvancements = "SELECT advancement_key, box_uuid FROM box_advancements";
@@ -76,14 +79,17 @@ public class BoxRepository {
         });
     }
 
-    /// Save a new box into the db
+    /**
+     * Save a new box into the db
+     *
+     * @param boxSnapshot A snapshot of the box to save
+     */
     public CompletableFuture<Void> saveBox(BoxSnapshot boxSnapshot) {
-        return CompletableFuture.runAsync(() -> {
+        return dbManager.runAsync(conn -> {
             String insertBox = "INSERT OR REPLACE INTO boxes (box_uuid, display_name, owner_uuid) VALUES (?, ?, ?)";
             String insertMember = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
             String insertAdvancement = "INSERT OR IGNORE INTO box_advancements (box_uuid, advancement_key) VALUES (?, ?)";
 
-            Connection conn = dbManager.getConnection();
             try {
                 conn.setAutoCommit(false);
 
@@ -127,7 +133,11 @@ public class BoxRepository {
         });
     }
 
-    /// Delete a box
+    /**
+     * Delete a box from the db
+     *
+     * @param boxUuid the uuid of the box to delete
+     */
     public CompletableFuture<Void> deleteBox(UUID boxUuid) {
         return CompletableFuture.runAsync(() -> {
             String delete = "DELETE FROM boxes WHERE box_uuid = ?";
@@ -142,7 +152,12 @@ public class BoxRepository {
         });
     }
 
-    /// Add a member to a box
+    /**
+     * Add a member to a box
+     *
+     * @param boxUuid the uuid of the box to add the member to
+     * @param playerUuid the uuid of the player to add
+     */
     public CompletableFuture<Void> addMember(UUID boxUuid, UUID playerUuid) {
         return CompletableFuture.runAsync(() -> {
             String sql = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
@@ -157,7 +172,12 @@ public class BoxRepository {
         });
     }
 
-    /// Remove a member from a box
+    /**
+     * Remove a member from a box
+     *
+     * @param boxUuid the uuid of the box to remove the member from
+     * @param playerUuid the uuid of the player to remove
+     */
     public CompletableFuture<Void> removeMember(UUID boxUuid, UUID playerUuid) {
         return CompletableFuture.runAsync(() -> {
             String sql = "DELETE FROM box_members WHERE box_uuid = ? AND player_uuid = ?";
@@ -172,6 +192,12 @@ public class BoxRepository {
         });
     }
 
+    /**
+     * Updates the display name of a box
+     *
+     * @param boxUuid the unique identifier of the box whose display name is to be updated
+     * @param displayName the new display name to
+     */
     public CompletableFuture<Void> updateDisplayName(UUID boxUuid, String displayName) {
         return CompletableFuture.runAsync(() -> {
             String sql = "UPDATE boxes SET display_name = ? WHERE box_uuid = ?";
@@ -187,6 +213,12 @@ public class BoxRepository {
         });
     }
 
+    /**
+     * Save an advancement to the db
+     *
+     * @param boxUuid the unique identifier of the box to which the advancement is to be saved
+     * @param advancementKey the unique identifier of the advancement to be saved
+     */
     public CompletableFuture<Void> saveAdvancement(UUID boxUuid, NamespacedKey advancementKey) {
         return CompletableFuture.runAsync(() -> {
             String sql = "INSERT OR IGNORE INTO box_advancements (box_uuid, advancement_key) VALUES (?, ?)";
@@ -202,6 +234,13 @@ public class BoxRepository {
         });
     }
 
+    /**
+     *  Change the owner of a box
+     *
+     * @param box the box whose owner is to be changed
+     * @param newOwnerUuid the UUID of the new owner
+     * @param previousOwner the UUID of the previous owner
+     */
     public CompletableFuture<Void> setOwner(Box box, UUID newOwnerUuid, UUID previousOwner) {
         return CompletableFuture.runAsync(() -> {
             String updateOwner = "UPDATE boxes SET owner_uuid = ? WHERE box_uuid = ?";
