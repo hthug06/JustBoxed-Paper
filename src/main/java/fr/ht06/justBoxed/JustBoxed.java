@@ -1,5 +1,6 @@
 package fr.ht06.justBoxed;
 
+import fr.ht06.justBoxed.Box.Box;
 import fr.ht06.justBoxed.Box.BoxRegistry;
 import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.Box.BoxTemplate;
@@ -84,9 +85,21 @@ public final class JustBoxed extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (this.boxRegistry != null) {
+            for (Box box : this.boxRegistry.getAllBoxes()) {
+                box.clearInvitations();
+                if (box.isWorldLoaded(this)) {
+                    box.unloadWorld(this);
+                }
+            }
+        }
+
         // Close the connection to the database
         if (this.databaseManager != null) {
             this.databaseManager.close();
         }
     }
+
+
+
 }

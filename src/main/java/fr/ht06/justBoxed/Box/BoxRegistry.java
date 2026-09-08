@@ -1,10 +1,10 @@
 package fr.ht06.justBoxed.Box;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.NamespacedKey;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +15,10 @@ public class BoxRegistry {
     /// Because we use this a lot, it's better to have this in RAM
     /// <OwnerUUID><BoxUUID>
     private final Map<UUID, UUID> playerToBox = new ConcurrentHashMap<>();
+
+    public Collection<Box> getAllBoxes() {
+        return this.boxes.values();
+    }
 
     public void registerBox(Box box) {
         boxes.put(box.getUuid(), box);

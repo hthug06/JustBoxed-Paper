@@ -15,8 +15,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.Set;
+import java.util.UUID;
 
 public class PlayerListeners implements Listener {
 
@@ -81,6 +83,18 @@ public class PlayerListeners implements Listener {
                     .append(Component.text(" advancements.", NamedTextColor.GRAY));
 
             player.sendMessage(message);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID playerUuid = event.getPlayer().getUniqueId();
+
+        // Remove invitations where this player is the target
+        for (Box box : this.registry.getAllBoxes()) {
+            if (box.isInvited(playerUuid)) {
+                box.removeInvitation(playerUuid);
+            }
         }
     }
 }
