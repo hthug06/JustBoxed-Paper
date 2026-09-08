@@ -194,18 +194,19 @@ public class BoxedCommand {
         Component displayName = MiniMessage.miniMessage().deserialize(ctx.getArgument("box_name", String.class));
 
         this.boxService.createBox(displayName, player)
-                .thenAccept(_ -> {
+                .thenAccept(_ -> plugin.getServer().getScheduler().runTask(plugin, () -> {
                     player.sendPlainMessage("Box created ! Teleporting...");
 
+                    // advancement progress needs to be sync
                     Iterator<Advancement> iterator = Bukkit.getServer().advancementIterator();
-                    while (iterator.hasNext())
-                    {
-                        AdvancementProgress progress = player.getAdvancementProgress(iterator.next());
-                        for (String criteria : progress.getAwardedCriteria())
+                    while (iterator.hasNext()) {
+                        Advancement adv = iterator.next();
+                        AdvancementProgress progress = player.getAdvancementProgress(adv);
+                        for (String criteria : progress.getAwardedCriteria()) {
                             progress.revokeCriteria(criteria);
+                        }
                     }
-
-                }).exceptionally(ex -> {
+                })).exceptionally(ex -> {
                     this.plugin.getLogger().severe("Error when creating box : " + ex.getMessage());
                     player.sendPlainMessage("Failed to create a box (please contact an administrator)");
                     return null;
