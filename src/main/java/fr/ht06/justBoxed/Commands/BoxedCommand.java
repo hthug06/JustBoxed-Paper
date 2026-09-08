@@ -220,11 +220,13 @@ public class BoxedCommand {
         }
 
         // Check for box ownership is done in the brigadier
-        this.boxService.deleteBox(JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId())).thenAccept(_ -> player.sendPlainMessage("Box deleted !")).exceptionally(ex -> {
-            this.plugin.getLogger().severe("Error when deleting box : " + ex.getMessage());
-            player.sendPlainMessage("Failed to delete box (please contact an administrator)");
-            return null;
-        });
+        this.boxService.deleteBox(JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()))
+                .thenAccept(_ -> player.sendPlainMessage("Box deleted !"))
+                .exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error when deleting box : " + ex.getMessage());
+                    player.sendPlainMessage("Failed to delete box (please contact an administrator)");
+                    return null;
+                });
 
         return Command.SINGLE_SUCCESS;
     }

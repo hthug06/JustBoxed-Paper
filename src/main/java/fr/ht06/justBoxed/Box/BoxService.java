@@ -52,6 +52,11 @@ public class BoxService {
 
             // Save in SQLite
             repository.saveBox(box).thenRun(() -> future.complete(box));
+
+            // Update the player command (sync for safety reasons)
+            // We do this because the command registration suggestion has changed
+            plugin.getServer().getScheduler().runTask(plugin, owner::updateCommands);
+
         });
 
         return future;
@@ -64,6 +69,15 @@ public class BoxService {
 
         // Unload world and delete folder
         BoxWorldManager.deleteBox(plugin, box);
+
+        // Update the player command
+        // We do this because the command registration suggestion has changed
+        for (UUID uuid : box.getAllMembersWithLeader()) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                p.updateCommands();
+            }
+        }
 
         // Delete from SQLite
         return repository.deleteBox(box.getUuid());
@@ -78,6 +92,14 @@ public class BoxService {
     /// remove a member from the box and update it into SQLite
     public CompletableFuture<Void> removeMember(Box box, UUID memberUuid) {
         registry.removeMember(box.getUuid(), memberUuid);
+
+        // Update the player command
+        // We do this because the command registration suggestion has changed
+        Player owner = Bukkit.getPlayer(memberUuid);
+        if (owner != null && owner.isOnline()) {
+            owner.updateCommands();
+        }
+
         return repository.removeMember(box.getUuid(), memberUuid);
     }
 
@@ -157,6 +179,7 @@ public class BoxService {
                 }
 
                 box.broadcastMessage(player.name().append(Component.text(" has joined the box !")));
+                player.updateCommands();
             });
 
             return true;
@@ -234,8 +257,19 @@ public class BoxService {
     public CompletableFuture<Void> setOwner(Box box, UUID newOwnerUuid) {
         // Get the previous owner, else, when changing in the database, the owner of the box will be the new owner
         // And this will break everything
-        UUID previousOwner = this.registry.setOwner(box, newOwnerUuid);
+        UUID previousOwnerUuid = this.registry.setOwner(box, newOwnerUuid);
 
-        return this.repository.setOwner(box, newOwnerUuid, previousOwner);
+        // Update players commands suggestions
+        Player newOwner = Bukkit.getPlayer(newOwnerUuid);
+        if (newOwner != null && newOwner.isOnline()) {
+            newOwner.updateCommands();
+        }
+
+        Player previousOwner = Bukkit.getPlayer(newOwnerUuid);
+        if (previousOwner != null && previousOwner.isOnline()) {
+            previousOwner.updateCommands();
+        }
+
+        return this.repository.setOwner(box, newOwnerUuid, previousOwnerUuid);
     }
 }
