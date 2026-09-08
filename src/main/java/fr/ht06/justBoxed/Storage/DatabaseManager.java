@@ -55,7 +55,9 @@ public class DatabaseManager {
         }
 
         Class.forName("org.sqlite.JDBC");
-        this.connection = DriverManager.getConnection("jdbc:sqlite:plugins/JustBoxed/data.db");
+        File dbFile = new File(dataFolder, "data.db");
+        this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("PRAGMA foreign_keys = ON;");
             stmt.execute("PRAGMA journal_mode = WAL;");
