@@ -5,11 +5,18 @@ import fr.ht06.justBoxed.Box.BoxRegistry;
 import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.JustBoxed;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentBuilder;
+import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+
+import java.util.Set;
 
 public class PlayerListeners implements Listener {
 
@@ -51,5 +58,29 @@ public class PlayerListeners implements Listener {
                     box.broadcastMessage(msg);
 
                 });
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+
+        Box box = this.registry.getBoxByPlayer(player.getUniqueId());
+        if (box == null) return;
+
+        Set<Advancement> advancements = this.service.syncEveryAdvancementForOnePlayer(box, player);
+        if (!advancements.isEmpty()){
+            // Create a component to show how many advancements where made while the player was offline
+            Component advancementsList = Component.join(
+                    JoinConfiguration.separator(Component.text(", ", NamedTextColor.GRAY)),
+                    advancements.stream().map(Advancement::displayName).toList()
+            );
+
+            Component message = Component.text("While you were offline, your box members completed a total of ", NamedTextColor.GRAY)
+                    .append(Component.text(advancements.size(), NamedTextColor.GOLD)
+                            .hoverEvent(HoverEvent.showText(advancementsList)))
+                    .append(Component.text(" advancements.", NamedTextColor.GRAY));
+
+            player.sendMessage(message);
+        }
     }
 }

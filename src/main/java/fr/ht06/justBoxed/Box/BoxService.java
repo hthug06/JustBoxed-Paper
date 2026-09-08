@@ -11,7 +11,9 @@ import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -180,7 +182,7 @@ public class BoxService {
         return this.repository.saveAdvancement(box.getUuid(), key)
                 .thenAccept(_ -> plugin.getServer().getScheduler().runTask(plugin, () -> {
                     // sync every player
-                    this.syncPlayerAdvancement(box, advancement, getter);
+                    this.syncOneAdvancementForEveryPlayer(box, advancement, getter);
 
                     box.updateWorldBorder(this.plugin);
                 }))
@@ -190,7 +192,7 @@ public class BoxService {
                 });
     }
 
-    private void syncPlayerAdvancement(Box box, Advancement advancement, Player getter){
+    public void syncOneAdvancementForEveryPlayer(Box box, Advancement advancement, Player getter){
         for (UUID memberUuid : box.getAllMembersWithLeader()) {
             if (memberUuid.equals(getter.getUniqueId())) {
                 continue;
@@ -206,6 +208,27 @@ public class BoxService {
                 }
             }
         }
+    }
+
+    /// Add every advancement from a box to a player and return the list of advancement the player get
+    public Set<Advancement> syncEveryAdvancementForOnePlayer(Box box, Player player){
+        Set<Advancement> advancements = new HashSet<>();
+
+        if (player != null && player.isOnline()) {
+            for (NamespacedKey key : box.getUnlockedAdvancements()){
+                Advancement advancement = Bukkit.getAdvancement(key);
+                if (advancement != null){
+                    AdvancementProgress progress = player.getAdvancementProgress(advancement);
+                    for (String criteria : advancement.getCriteria()) {
+                        if (!progress.getAwardedCriteria().contains(criteria)) {
+                            progress.awardCriteria(criteria);
+                            advancements.add(advancement);
+                        }
+                    }
+                }
+            }
+        }
+        return advancements;
     }
 
     public CompletableFuture<Void> setOwner(Box box, UUID newOwnerUuid) {
