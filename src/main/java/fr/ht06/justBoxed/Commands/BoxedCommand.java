@@ -359,9 +359,9 @@ public class BoxedCommand {
                         Player kickedPlayerOnline = kickedPlayer.getPlayer();
                         if (kickedPlayerOnline != null) {
                             kickedPlayerOnline.sendMessage(Component.text("You have been kicked from ").append(box.getDisplayName()));
-                            kickedPlayerOnline.teleportAsync(Bukkit.getWorld("world").getSpawnLocation());
+                            kickedPlayerOnline.teleportAsync(Bukkit.getWorlds().getFirst().getSpawnLocation());
                         }
-
+                        box.broadcastMessage(Component.text(kickedPlayer.getName() + " has been kicked from the box"));
                     }
                 })
                 .exceptionally(ex -> {
@@ -369,7 +369,6 @@ public class BoxedCommand {
                     player.sendPlainMessage("Failed to kick a player (please contact an administrator)");
                     return null;
                 });
-        box.broadcastMessage(Component.text(kickedPlayer.getName() + " has been kicked from the box"));
 
 
         return Command.SINGLE_SUCCESS;
@@ -403,15 +402,15 @@ public class BoxedCommand {
 
         this.boxService.removeMember(box, player.getUniqueId())
                 .thenAccept(_ -> {
-                    player.teleportAsync(Bukkit.getWorld("world").getSpawnLocation());
+                    player.teleportAsync(Bukkit.getWorlds().getFirst().getSpawnLocation());
                     player.sendMessage(Component.text("You successfully leave ").append(box.getDisplayName()));
+                    box.broadcastMessage(player.name().append(Component.text("leaved the box...")));
                 })
                 .exceptionally(ex -> {
                     this.plugin.getLogger().severe("Error when leaving a box: " + ex.getMessage());
                     player.sendPlainMessage("Failed to leave the box (please contact an administrator)");
                     return null;
                 });
-        box.broadcastMessage(player.name().append(Component.text("leaved the box...")));
 
         return Command.SINGLE_SUCCESS;
     }
