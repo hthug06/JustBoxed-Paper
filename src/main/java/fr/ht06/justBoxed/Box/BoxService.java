@@ -207,4 +207,12 @@ public class BoxService {
             }
         }
     }
+
+    public CompletableFuture<Void> setOwner(Box box, UUID newOwnerUuid) {
+        // Get the previous owner, else, when changing in the database, the owner of the box will be the new owner
+        // And this will break everything
+        UUID previousOwner = this.registry.setOwner(box, newOwnerUuid);
+
+        return this.repository.setOwner(box, newOwnerUuid, previousOwner);
+    }
 }

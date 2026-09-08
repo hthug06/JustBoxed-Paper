@@ -74,4 +74,9 @@ public class BoxRegistry {
     public void addAvancement(UUID boxUuid, NamespacedKey namespacedKey){
         this.boxes.get(boxUuid).addAdvancement(namespacedKey);
     }
+
+    /// Return the previous owner
+    public UUID setOwner(Box box, UUID uniqueId) {
+        return box.setOwner(uniqueId);
+    }
 }

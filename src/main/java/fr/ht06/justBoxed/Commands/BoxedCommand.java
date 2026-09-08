@@ -5,6 +5,8 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import fr.ht06.justBoxed.Box.Box;
 import fr.ht06.justBoxed.Box.BoxService;
 import fr.ht06.justBoxed.JustBoxed;
@@ -27,6 +29,7 @@ import org.bukkit.entity.Player;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class BoxedCommand {
     private final JustBoxed plugin;
@@ -70,18 +73,7 @@ public class BoxedCommand {
                         .requires(this::requireOwner)
                         .then(Commands.argument("target", StringArgumentType.word())
                                 // Suggest every member of the box
-                                .suggests((ctx, builder) -> {
-                                    if (ctx.getSource().getSender() instanceof Player player
-                                            && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()) != null) {
-                                        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
-                                        for (UUID member : box.getMembers()) {
-                                            builder.suggest(Bukkit.getOfflinePlayer(member).getName());
-                                        }
-
-                                    }
-
-                                    return builder.buildFuture();
-                                })
+                                .suggests(this::suggestMembers)
                                 .executes(this::kickPlayerFromBox)
                                 .then(Commands.literal("confirm")
                                         .executes(this::kickConfirmPlayerFromBox)
@@ -99,6 +91,16 @@ public class BoxedCommand {
                         .requires(this::requireOwner)
                         .then(Commands.argument("box_name", StringArgumentType.greedyString())
                                 .executes(this::setBoxName)
+                        )
+                )
+                .then(Commands.literal("setowner")
+                        .requires(this::requireOwner)
+                        .then(Commands.argument("target", StringArgumentType.word())
+                                .suggests(this::suggestMembers)
+                                .executes(this::setBoxOwner)
+                                .then(Commands.literal("confirm")
+                                        .executes(this::setBoxOwnerConfirm)
+                                )
                         )
                 )
                 .then(Commands.literal("team")
@@ -130,6 +132,19 @@ public class BoxedCommand {
         return requirePlayerWithBox(source)
                 && source.getSender() instanceof Player player
                 && !JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()).getOwner().equals(player.getUniqueId());
+    }
+
+    private CompletableFuture<Suggestions> suggestMembers(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder){
+        if (ctx.getSource().getSender() instanceof Player player
+                && JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId()) != null) {
+            Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+            for (UUID member : box.getMembers()) {
+                builder.suggest(Bukkit.getOfflinePlayer(member).getName());
+            }
+
+        }
+
+        return builder.buildFuture();
     }
 
     private int acceptInvitation(CommandContext<CommandSourceStack> ctx) {
@@ -410,6 +425,53 @@ public class BoxedCommand {
                 .exceptionally(ex -> {
                     this.plugin.getLogger().severe("Error when changing team name : " + ex.getMessage());
                     player.sendPlainMessage("Failed to change team name (please contact an administrator)");
+                    return null;
+                });
+
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int setBoxOwner(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only owner can set the the next owner!");
+            return Command.SINGLE_SUCCESS;
+        }
+        OfflinePlayer nextOwner = Bukkit.getOfflinePlayer(ctx.getArgument("target", String.class));
+
+        // Prepare message
+        Component message = Component.text("Do you really want to set " + nextOwner.getName() + " as the new owner of this box?")
+                .appendNewline()
+                .append(Component.text("Pass the Torch !", NamedTextColor.GOLD).decorate(TextDecoration.BOLD)
+                        .clickEvent(ClickEvent.runCommand("/box setowner " + nextOwner.getName() + " confirm"))
+                        .hoverEvent(HoverEvent.showText(Component.text("Click to set " + nextOwner.getName() + " as the new owner", NamedTextColor.RED))));
+
+        player.sendMessage(message);
+
+        return Command.SINGLE_SUCCESS;
+
+    }
+
+    private int setBoxOwnerConfirm(CommandContext<CommandSourceStack> ctx) {
+        if (!(ctx.getSource().getSender() instanceof Player player)) {
+            ctx.getSource().getSender().sendPlainMessage("Only owner can set the the next owner!");
+            return Command.SINGLE_SUCCESS;
+        }
+        Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
+        OfflinePlayer newOwner = Bukkit.getOfflinePlayer(ctx.getArgument("target", String.class));
+
+        this.boxService.setOwner(box, newOwner.getUniqueId())
+                .thenAccept(_ -> {
+                    if (newOwner.isOnline()) {
+                        Player newOwnerOnline = newOwner.getPlayer();
+                        if (newOwnerOnline != null) {
+                            newOwnerOnline.sendMessage(Component.text("You have been promoted as the owner of ").append(box.getDisplayName()).append(Component.text(". Congratulation !")));
+                            box.broadcastMessage(Component.text(newOwner.getName() + " Is now the new owner of ").append(box.getDisplayName()));
+                        }
+                    }
+                })
+                .exceptionally(ex -> {
+                    this.plugin.getLogger().severe("Error when promoting a player: " + ex.getMessage());
+                    player.sendPlainMessage("Failed to promote a player (please contact an administrator)");
                     return null;
                 });
 

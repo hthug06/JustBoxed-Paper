@@ -57,8 +57,18 @@ public class Box {
         return owner;
     }
 
-    public void setOwner(UUID owner) {
-        this.owner = owner;
+    /// Set the new owner as the owner and the set previous owner as a member
+    /// Return the previous owner
+    public UUID setOwner(UUID newOwner) {
+        UUID previousOwner = this.owner;
+        // owner -> member
+        this.members.add(this.owner);
+
+        // member -> new owner
+        this.owner = newOwner;
+        this.members.remove(newOwner);
+
+        return previousOwner;
     }
 
     public Set<UUID> getAllMembersWithLeader() {

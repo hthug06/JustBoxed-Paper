@@ -10,6 +10,7 @@ import org.bukkit.plugin.Plugin;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 public class BoxRepository {
 
@@ -196,6 +197,45 @@ public class BoxRepository {
                 ps.executeUpdate();
             } catch (SQLException e) {
                 plugin.getLogger().severe("Failed to save advancement to the db: " + e.getMessage());
+            }
+        });
+    }
+
+    public CompletableFuture<Void> setOwner(Box box, UUID newOwnerUuid, UUID previousOwner) {
+        return CompletableFuture.runAsync(() -> {
+            String updateOwner = "UPDATE boxes SET owner_uuid = ? WHERE box_uuid = ?";
+            String setPreviousOwnerAsAMember = "UPDATE box_members SET player_uuid = ? WHERE box_uuid = ? AND player_uuid = ?";
+
+            Connection conn = dbManager.getConnection();
+            try {
+                conn.setAutoCommit(false);
+
+                // Update owner
+                try (PreparedStatement ps = conn.prepareStatement(updateOwner)) {
+                    ps.setString(1, newOwnerUuid.toString());
+                    ps.setString(2, box.getUuid().toString());
+                    ps.executeUpdate();
+                }
+
+                // Replace the new owner in box_member with the previous owner
+                try (PreparedStatement ps = conn.prepareStatement(setPreviousOwnerAsAMember)) {
+                    ps.setString(1, previousOwner.toString());
+                    ps.setString(2, box.getUuid().toString());
+                    ps.setString(3, newOwnerUuid.toString());
+                    ps.executeUpdate();
+                }
+
+                conn.commit();
+                conn.setAutoCommit(true);
+            } catch (SQLException e) {
+                try {
+                    conn.rollback();
+                    conn.setAutoCommit(true);
+                } catch (SQLException rollbackEx) {
+                    plugin.getLogger().severe("Rollback failed: " + rollbackEx.getMessage());
+                }
+                plugin.getLogger().severe("Failed to transfer box ownership: " + e.getMessage());
+                throw new CompletionException(e);
             }
         });
     }
