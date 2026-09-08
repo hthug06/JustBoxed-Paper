@@ -2,6 +2,7 @@ package fr.ht06.justBoxed.Storage;
 
 import fr.ht06.justBoxed.Box.Box;
 import fr.ht06.justBoxed.Box.BoxRegistry;
+import fr.ht06.justBoxed.Box.BoxSnapshot;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.NamespacedKey;
@@ -76,7 +77,7 @@ public class BoxRepository {
     }
 
     /// Save a new box into the db
-    public CompletableFuture<Void> saveBox(Box box) {
+    public CompletableFuture<Void> saveBox(BoxSnapshot boxSnapshot) {
         return CompletableFuture.runAsync(() -> {
             String insertBox = "INSERT OR REPLACE INTO boxes (box_uuid, display_name, owner_uuid) VALUES (?, ?, ?)";
             String insertMember = "INSERT OR IGNORE INTO box_members (box_uuid, player_uuid) VALUES (?, ?)";
@@ -88,16 +89,16 @@ public class BoxRepository {
 
                 // boxes
                 try (PreparedStatement ps = conn.prepareStatement(insertBox)) {
-                    ps.setString(1, box.getUuid().toString());
-                    ps.setString(2, MiniMessage.miniMessage().serialize(box.getDisplayName()));
-                    ps.setString(3, box.getOwner().toString());
+                    ps.setString(1, boxSnapshot.uuid().toString());
+                    ps.setString(2, MiniMessage.miniMessage().serialize(boxSnapshot.displayName()));
+                    ps.setString(3, boxSnapshot.owner().toString());
                     ps.executeUpdate();
                 }
 
                 // box members
                 try (PreparedStatement psMember = conn.prepareStatement(insertMember)) {
-                    for (UUID member : box.getMembers()) {
-                        psMember.setString(1, box.getUuid().toString());
+                    for (UUID member : boxSnapshot.members()) {
+                        psMember.setString(1, boxSnapshot.uuid().toString());
                         psMember.setString(2, member.toString());
                         psMember.addBatch();
                     }
@@ -106,8 +107,8 @@ public class BoxRepository {
 
                 // Box advancement
                 try (PreparedStatement psAdvancement = conn.prepareStatement(insertAdvancement)) {
-                    for (NamespacedKey key : box.getUnlockedAdvancements()) {
-                        psAdvancement.setString(1, box.getUuid().toString());
+                    for (NamespacedKey key : boxSnapshot.unlockedAdvancements()) {
+                        psAdvancement.setString(1, boxSnapshot.uuid().toString());
                         psAdvancement.setString(2, key.asString());
                         psAdvancement.addBatch();
                     }

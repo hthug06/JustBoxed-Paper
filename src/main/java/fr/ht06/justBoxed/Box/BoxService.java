@@ -51,7 +51,9 @@ public class BoxService {
             registry.registerBox(box);
 
             // Save in SQLite
-            repository.saveBox(box).thenRun(() -> future.complete(box));
+            // Create a snapshot of the box to avoid problem with async
+            BoxSnapshot boxSnapshot = BoxSnapshot.from(box);
+            repository.saveBox(boxSnapshot).thenRun(() -> future.complete(box));
 
             // Update the player command (sync for safety reasons)
             // We do this because the command registration suggestion has changed
