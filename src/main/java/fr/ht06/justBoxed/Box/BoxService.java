@@ -36,7 +36,7 @@ public class BoxService {
         CompletableFuture<Box> future = new CompletableFuture<>();
 
         // Clone and load the template world
-        BoxWorldManager.createBoxInstance(plugin, box, world -> {
+        BoxWorldManager.createWorldInstance(plugin, box, World.Environment.NORMAL, world -> {
             if (world == null) {
                 future.completeExceptionally(new IllegalStateException("Failed to create the world for the box for " + owner.getName()));
                 return;

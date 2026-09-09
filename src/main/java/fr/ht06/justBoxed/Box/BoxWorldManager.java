@@ -10,6 +10,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import static fr.ht06.justBoxed.Box.BoxTemplate.TEMPLATE_NETHER_NAME;
+import static fr.ht06.justBoxed.Box.BoxTemplate.TEMPLATE_WORLD_NAME;
+
 
 public class BoxWorldManager {
 
@@ -25,14 +28,19 @@ public class BoxWorldManager {
     );
 
     /// Create a box instance, aka a world for this box, a box team and also teleport the player to it
-    public static void createBoxInstance(Plugin plugin, Box box, Consumer<World> onComplete) {
+    public static void createWorldInstance(Plugin plugin, Box box, World.Environment environment, Consumer<World> onComplete) {
+        String templateName = environment == World.Environment.NORMAL ? TEMPLATE_WORLD_NAME : TEMPLATE_NETHER_NAME;
+        String folderName = environment == World.Environment.NORMAL
+                ? "box_" + box.getUuid().toString().toLowerCase()
+                : "box_" + box.getUuid().toString().toLowerCase() + "_nether";
+
         Path dimensionsFolder = Bukkit.getWorldContainer().toPath()
                 .resolve("world")
                 .resolve("dimensions")
                 .resolve("justboxed");
 
-        Path sourceDir = dimensionsFolder.resolve(BoxTemplate.TEMPLATE_WORLD_NAME);
-        Path targetDir = dimensionsFolder.resolve("box_" + box.getUuid());
+        Path sourceDir = dimensionsFolder.resolve(templateName);
+        Path targetDir = dimensionsFolder.resolve(folderName);
 
         // Copy file async (no freeze of tick)
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
@@ -41,7 +49,8 @@ public class BoxWorldManager {
 
                 // Back to main thread to declare the world to Paper
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, "box_" + box.getUuid().toString().toLowerCase()));
+                    WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, folderName));
+                    creator.environment(environment);
 
                     World boxWorld = creator.createWorld();
 
@@ -50,7 +59,7 @@ public class BoxWorldManager {
                     }
                 });
             } catch (IOException e) {
-                plugin.getLogger().severe("Error when creating the box " + box.getUuid().toString().toLowerCase() + " : " + e.getMessage() + "(invalid path)");
+                plugin.getLogger().severe("Error when creating the box " + folderName + " : " + e.getMessage() + "(invalid path)");
 
                 // Delete it if the world failed to create
                 try {
