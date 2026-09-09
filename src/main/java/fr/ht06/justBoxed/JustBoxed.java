@@ -77,9 +77,17 @@ public final class JustBoxed extends JavaPlugin {
         // On first launch, create a template world with seed 8500081009970950196 (every biome and structure in 1000 blocks)
         // It will be used to create boxes by copying it instead of generating a new world
         if (!BoxTemplate.exist(this)) {
-            getLogger().info("Template world not found, creating it...");
-            BoxTemplate.create(this);
-            getLogger().info("Template world created !");
+            getLogger().info("Some Templates worlds not found, creating them...");
+
+            getLogger().info("Creating Overworld template...");
+            BoxTemplate.create(this, World.Environment.NORMAL);
+            getLogger().info("Overworld template created !");
+
+            getLogger().info("Creating Nether template...");
+            BoxTemplate.create(this, World.Environment.NETHER);
+            getLogger().info("Nether template created !");
+
+            getLogger().info("Templates worlds are created !");
         }
     }
 
