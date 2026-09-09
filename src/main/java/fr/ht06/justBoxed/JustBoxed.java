@@ -11,6 +11,8 @@ import fr.ht06.justBoxed.Storage.BoxRepository;
 import fr.ht06.justBoxed.Storage.DatabaseManager;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -73,22 +75,7 @@ public final class JustBoxed extends JavaPlugin {
         // Register Listeners / events
         getServer().getPluginManager().registerEvents(new PlayerListeners(this, this.boxService, this.boxRegistry), this);
 
-
-        // On first launch, create a template world with seed 8500081009970950196 (every biome and structure in 1000 blocks)
-        // It will be used to create boxes by copying it instead of generating a new world
-        if (!BoxTemplate.exist(this)) {
-            getLogger().info("Some Templates worlds not found, creating them...");
-
-            getLogger().info("Creating Overworld template...");
-            BoxTemplate.create(this, World.Environment.NORMAL);
-            getLogger().info("Overworld template created !");
-
-            getLogger().info("Creating Nether template...");
-            BoxTemplate.create(this, World.Environment.NETHER);
-            getLogger().info("Nether template created !");
-
-            getLogger().info("Templates worlds are created !");
-        }
+        createTemplatesWorld();
     }
 
     @Override
@@ -116,6 +103,37 @@ public final class JustBoxed extends JavaPlugin {
         // Close the connection to the database
         if (this.databaseManager != null) {
             this.databaseManager.close();
+        }
+    }
+
+    /// On first launch, create a template world with seed 8500081009970950196 (every biome and structure in 1000 blocks)
+    /// It will be used to create boxes by copying it instead of generating a new world
+    private void createTemplatesWorld() {
+        if (!BoxTemplate.exist(this)) {
+            getComponentLogger().info(Component.text("Some Templates worlds not found, creating them...", NamedTextColor.RED));
+
+            if (BoxTemplate.dimensionsExists(this, World.Environment.NORMAL)){
+                getComponentLogger().info(Component.text("Found overworld template !", NamedTextColor.DARK_GREEN));
+            }
+            else {
+                getComponentLogger().info(Component.text("Overworld template not found, creating it...", NamedTextColor.RED));
+                BoxTemplate.create(this, World.Environment.NORMAL);
+                getComponentLogger().info(Component.text("Overworld template created !", NamedTextColor.GREEN));
+            }
+
+            if (BoxTemplate.dimensionsExists(this, World.Environment.NETHER)){
+                getComponentLogger().info(Component.text("Found nether template !", NamedTextColor.DARK_GREEN));
+            }
+            else {
+                getComponentLogger().info(Component.text("Nether template not found, creating it...", NamedTextColor.RED));
+                BoxTemplate.create(this, World.Environment.NETHER);
+                getComponentLogger().info(Component.text("Nether template created !", NamedTextColor.GREEN));
+            }
+
+            getComponentLogger().info(Component.text("Templates worlds are all created !", NamedTextColor.DARK_GREEN));
+        }
+        else{
+            getComponentLogger().info(Component.text("Found all world templates !", NamedTextColor.DARK_GREEN));
         }
     }
 
