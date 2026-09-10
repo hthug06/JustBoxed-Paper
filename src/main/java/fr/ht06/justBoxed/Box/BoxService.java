@@ -37,8 +37,8 @@ public class BoxService {
 
         CompletableFuture<Box> future = new CompletableFuture<>();
 
-        // Clone and load the template world
-        this.worldManager.createWorldInstance(plugin, box, World.Environment.NORMAL, world -> {
+        // Clone and load the template worlds
+        this.worldManager.createBoxWorlds(box, world -> {
             if (world == null) {
                 future.completeExceptionally(new IllegalStateException("Failed to create the world for the box for " + owner.getName()));
                 return;
@@ -151,7 +151,7 @@ public class BoxService {
                     return;
                 }
 
-                World world = this.worldManager.loadWorld(box, World.Environment.NORMAL);
+                World world = this.loadWorld(box, World.Environment.NORMAL);
                 if (world != null) {
                     Location targetLoc = world.getSpawnLocation().toCenterLocation();
                     player.teleportAsync(targetLoc)

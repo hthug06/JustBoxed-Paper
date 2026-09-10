@@ -92,50 +92,75 @@ public class BoxWorldManager {
             "metadata.dat"
     );
 
-    /// Create a box instance, aka a world for this box, a box team and also teleport the player to it
-    public void createWorldInstance(Plugin plugin, Box box, World.Environment environment, Consumer<World> onComplete) {
+    /**
+     * Create a new World for the given box.
+     *
+     * The world is created by copying the template files, and then instantiating it with {@link WorldCreator}.
+     *
+     * @param box The given box
+     * @param environment Can either be {@link World.Environment#NORMAL} or {@link World.Environment#NETHER}
+     * @param onOverworldComplete a callback that is invoked once the overworld creation is complete. If world creation fails,
+     *                             the callback will be invoked with {@code null}.
+     */
+
+    public void createBoxWorld(Box box, World.Environment environment, Consumer<World> onOverworldComplete) {
         String templateName = environment == World.Environment.NORMAL ? TEMPLATE_WORLD_NAME : TEMPLATE_NETHER_NAME;
         String folderName = environment == World.Environment.NORMAL
                 ? "box_" + box.getUuid().toString().toLowerCase()
                 : "box_" + box.getUuid().toString().toLowerCase() + "_nether";
 
-        Path dimensionsFolder = Bukkit.getWorldContainer().toPath()
-                .resolve("world")
-                .resolve("dimensions")
-                .resolve("justboxed");
-
-        Path sourceDir = dimensionsFolder.resolve(templateName);
-        Path targetDir = dimensionsFolder.resolve(folderName);
+        Path sourceDir = this.dimensionsFolder.resolve(templateName);
+        Path targetDir = this.dimensionsFolder.resolve(folderName);
 
         // Copy file async (no freeze of tick)
-        plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+        this.plugin.getServer().getScheduler().runTaskAsynchronously(this.plugin, () -> {
             try {
                 copyTemplateDirectory(sourceDir, targetDir);
 
                 // Back to main thread to declare the world to Paper
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, folderName));
+                plugin.getServer().getScheduler().runTask(this.plugin, () -> {
+                    WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(this.plugin, folderName));
                     creator.environment(environment);
 
                     World boxWorld = creator.createWorld();
 
-                    if (onComplete != null) {
-                        onComplete.accept(boxWorld);
+                    if (onOverworldComplete != null) {
+                        onOverworldComplete.accept(boxWorld);
                     }
                 });
             } catch (IOException e) {
-                plugin.getLogger().severe("Error when creating the box " + folderName + " : " + e.getMessage() + "(invalid path)");
+                this.plugin.getLogger().severe("Error when creating the box " + folderName + " : " + e.getMessage() + "(invalid path)");
 
                 // Delete it if the world failed to create
                 try {
                     deleteDirectoryRecursively(targetDir);
                 } catch (IOException ignored) {}
 
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    if (onComplete != null) {
-                        onComplete.accept(null);
+                plugin.getServer().getScheduler().runTask(this.plugin, () -> {
+                    if (onOverworldComplete != null) {
+                        onOverworldComplete.accept(null);
                     }
                 });
+            }
+        });
+    }
+
+    /**
+     *  Creates worlds for a box. First, create the overworld, and then the nether.
+     *
+     * @param box The {@link Box} instance for which worlds are to be created.
+     * @param onOverworldComplete a callback that is invoked once the overworld creation is complete. If world creation fails,
+     *                             the callback will be invoked with {@code null}.
+     */
+    public void createBoxWorlds(Box box, Consumer<World> onOverworldComplete) {
+        // Create overworld
+        createBoxWorld(box, World.Environment.NORMAL, overworld -> {
+            if (overworld != null) {
+                // After the overworld is created, create the nether
+                createBoxWorld(box, World.Environment.NETHER, null);
+            }
+            if (onOverworldComplete != null) {
+                onOverworldComplete.accept(overworld);
             }
         });
     }
