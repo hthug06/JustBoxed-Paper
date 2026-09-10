@@ -3,8 +3,6 @@ package fr.ht06.justBoxed.Box;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -80,54 +78,12 @@ public class Box {
         return unlockedAdvancements;
     }
 
-    public @Nullable World getWorld(Plugin plugin) {
-        NamespacedKey key = new NamespacedKey(plugin, "box_" + this.uuid);
-        return Bukkit.getWorld(key);
+    public String getOverworldWorldName() {
+        return "box_" + this.uuid;
     }
 
-    public boolean isWorldLoaded(Plugin plugin) {
-        return getWorld(plugin) != null;
-    }
-
-    /// Load a world and return it
-    public @Nullable World loadWorld(Plugin plugin) {
-        World existing = getWorld(plugin);
-        if (existing != null) {
-            return existing;
-        }
-
-        WorldCreator creator = WorldCreator.ofKey(new NamespacedKey(plugin, "box_" + this.uuid.toString().toLowerCase()));
-        World world = creator.createWorld();
-
-        this.updateWorldBorder(plugin);
-
-        return world;
-    }
-
-    /// Unload a world and tp all the player to the world `world`
-    /// return true if the world was unloaded, false otherwise
-    public void unloadWorld(Plugin plugin){
-        if (!this.isWorldLoaded(plugin))
-            return;
-
-        World world = this.getWorld(plugin);
-
-        // Put player on the base world
-        Location fallbackSpawn = Bukkit.getWorlds().getFirst().getSpawnLocation();
-        for (Player p : world.getPlayers()) {
-            p.teleport(fallbackSpawn);
-        }
-
-        //Unload without saving because we're deleting it
-        Bukkit.unloadWorld(world, false);
-    }
-
-    public void updateWorldBorder(Plugin plugin){
-        World world = this.getWorld(plugin);
-        if (world != null) {
-            // World border need to have a minimum size of 1
-            world.getWorldBorder().changeSize(1 + (this.unlockedAdvancements.size() * 2.0), 20L);
-        }
+    public String getNetherWorldName() {
+        return "box_" + this.uuid + "_nether";
     }
 
     public boolean isInvited(UUID playerUUID){

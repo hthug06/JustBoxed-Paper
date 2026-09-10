@@ -518,14 +518,18 @@ public class BoxedCommand {
         }
 
         Box box = JustBoxed.getInstance().getBoxRegistry().getBoxByPlayer(player.getUniqueId());
-        if (box.isWorldLoaded(this.plugin)) {
-            player.teleportAsync(box.getWorld(this.plugin).getSpawnLocation().toCenterLocation()).thenRun(() -> player.sendPlainMessage("Teleported to box !"));
-        } else {
-            player.sendPlainMessage("Loading world...");
-            World world = box.loadWorld(this.plugin);
-            player.teleportAsync(world.getSpawnLocation().toCenterLocation());
-            player.sendPlainMessage("Teleported to box !");
+        if (!this.boxService.isWorldLoaded(box, World.Environment.NORMAL)) {
+            player.sendMessage("Loading world...");
         }
+
+        World world = this.boxService.loadWorld(box, World.Environment.NORMAL);
+        if (world == null) {
+            player.sendPlainMessage("Failed to load box world.");
+            return Command.SINGLE_SUCCESS;
+        }
+
+        player.teleportAsync(world.getSpawnLocation().toCenterLocation())
+                .thenRun(() -> player.sendPlainMessage("Teleported to box !"));
         return Command.SINGLE_SUCCESS;
     }
 }

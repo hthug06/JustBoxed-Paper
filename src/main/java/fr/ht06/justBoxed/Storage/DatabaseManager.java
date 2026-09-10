@@ -1,6 +1,5 @@
 package fr.ht06.justBoxed.Storage;
 
-import fr.ht06.justBoxed.JustBoxed;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -13,7 +12,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class DatabaseManager {
 
