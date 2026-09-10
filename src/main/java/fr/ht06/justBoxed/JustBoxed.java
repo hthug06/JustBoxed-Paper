@@ -1,9 +1,6 @@
 package fr.ht06.justBoxed;
 
-import fr.ht06.justBoxed.Box.Box;
-import fr.ht06.justBoxed.Box.BoxRegistry;
-import fr.ht06.justBoxed.Box.BoxService;
-import fr.ht06.justBoxed.Box.BoxTemplate;
+import fr.ht06.justBoxed.Box.*;
 import fr.ht06.justBoxed.Commands.AdminBoxedCommand;
 import fr.ht06.justBoxed.Commands.BoxedCommand;
 import fr.ht06.justBoxed.Listeners.PlayerListeners;
@@ -25,6 +22,7 @@ public final class JustBoxed extends JavaPlugin {
     private BoxRepository boxRepository;
     private BoxRegistry boxRegistry;
     private BoxService boxService;
+    private BoxWorldManager boxWorldManager;
 
     public BoxRegistry getBoxRegistry() {
         return this.boxRegistry;
@@ -54,8 +52,11 @@ public final class JustBoxed extends JavaPlugin {
             return;
         }
 
+        // Start the world manager
+        this.boxWorldManager = new BoxWorldManager(this);
+
         // Start the box service with the registry and the repository
-        this.boxService = new BoxService(this, this.boxRegistry, boxRepository);
+        this.boxService = new BoxService(this, this.boxRegistry, boxRepository, this.boxWorldManager);
 
         // Register the command via the LifecycleManager of the plugin
         BoxedCommand boxedCommand = new BoxedCommand(this, this.boxService);
@@ -87,16 +88,7 @@ public final class JustBoxed extends JavaPlugin {
             for (Box box : this.boxRegistry.getAllBoxes()) {
                 box.clearInvitations();
 
-                // Teleport player to another world because if this is a box world,
-                // Next time they rejoint, they're going to spawn in the base world but at the coordinate of their box world
-                World world = box.getWorld(this);
-                if (world != null) {
-                    for (Player p : world.getPlayers()) {
-                        p.teleport(fallbackSpawn);
-                    }
-
-                    Bukkit.unloadWorld(world, true);
-                }
+                this.boxWorldManager.unloadAllWorlds(box, true);
             }
         }
 

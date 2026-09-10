@@ -20,11 +20,13 @@ public class BoxService {
     private final Plugin plugin;
     private final BoxRegistry registry;
     private final BoxRepository repository;
+    private final BoxWorldManager worldManager;
 
-    public BoxService(Plugin plugin, BoxRegistry registry, BoxRepository repository) {
+    public BoxService(Plugin plugin, BoxRegistry registry, BoxRepository repository, BoxWorldManager worldManager) {
         this.plugin = plugin;
         this.registry = registry;
         this.repository = repository;
+        this.worldManager = worldManager;
     }
 
     /// Create a new box: Instantiates the entity, clones the world, saves to RAM and persists in SQLite
@@ -36,7 +38,7 @@ public class BoxService {
         CompletableFuture<Box> future = new CompletableFuture<>();
 
         // Clone and load the template world
-        BoxWorldManager.createWorldInstance(plugin, box, World.Environment.NORMAL, world -> {
+        this.worldManager.createWorldInstance(plugin, box, World.Environment.NORMAL, world -> {
             if (world == null) {
                 future.completeExceptionally(new IllegalStateException("Failed to create the world for the box for " + owner.getName()));
                 return;
@@ -45,16 +47,16 @@ public class BoxService {
             owner.teleportAsync(world.getSpawnLocation().toCenterLocation());
 
             // Register the box
-            registry.registerBox(box);
+            this.registry.registerBox(box);
 
             // Save in SQLite
             // Create a snapshot of the box to avoid problem with async
             BoxSnapshot boxSnapshot = BoxSnapshot.from(box);
-            repository.saveBox(boxSnapshot).thenRun(() -> future.complete(box));
+            this.repository.saveBox(boxSnapshot).thenRun(() -> future.complete(box));
 
             // Update the player command (sync for safety reasons)
             // We do this because the command registration suggestion has changed
-            plugin.getServer().getScheduler().runTask(plugin, owner::updateCommands);
+            this.plugin.getServer().getScheduler().runTask(this.plugin, owner::updateCommands);
 
         });
 
@@ -64,10 +66,13 @@ public class BoxService {
     /// Deletes a box: unloads and deletes the world, purges RAM and removes the SQLite entry.
     public CompletableFuture<Void> deleteBox(Box box) {
         // Remove from RAM
-        registry.deleteBox(box.getUuid());
+        this.registry.deleteBox(box.getUuid());
 
         // Unload world and delete folder
-        BoxWorldManager.deleteBox(plugin, box);
+        this.worldManager.deleteBox(box);
+
+        // Clear invite
+        box.clearInvitations();
 
         // Update the player command
         // We do this because the command registration suggestion has changed
@@ -79,18 +84,18 @@ public class BoxService {
         }
 
         // Delete from SQLite
-        return repository.deleteBox(box.getUuid());
+        return this.repository.deleteBox(box.getUuid());
     }
 
     /// Add a member to the box and save it into SQLite
     public CompletableFuture<Void> addMember(Box box, UUID memberUuid) {
-        registry.addMember(box.getUuid(), memberUuid);
+        this.registry.addMember(box.getUuid(), memberUuid);
         return repository.addMember(box.getUuid(), memberUuid);
     }
 
     /// remove a member from the box and update it into SQLite
     public CompletableFuture<Void> removeMember(Box box, UUID memberUuid) {
-        registry.removeMember(box.getUuid(), memberUuid);
+        this.registry.removeMember(box.getUuid(), memberUuid);
 
         // Update the player command
         // We do this because the command registration suggestion has changed
@@ -99,12 +104,12 @@ public class BoxService {
             owner.updateCommands();
         }
 
-        return repository.removeMember(box.getUuid(), memberUuid);
+        return this.repository.removeMember(box.getUuid(), memberUuid);
     }
 
     public CompletableFuture<Void> setBoxName(Box box, Component teamName) {
-        registry.updateDisplayName(box.getUuid(), teamName);
-        return repository.updateDisplayName(box.getUuid(), teamName);
+        this.registry.updateDisplayName(box.getUuid(), teamName);
+        return this.repository.updateDisplayName(box.getUuid(), teamName);
     }
 
     /// Invite a player to the box
@@ -133,24 +138,20 @@ public class BoxService {
         }
 
         // Remove every invitation about this player
-        registry.removeInvitation(targetUuid);
-        registry.addMember(box.getUuid(), targetUuid);
+        this.registry.removeInvitation(targetUuid);
+        this.registry.addMember(box.getUuid(), targetUuid);
 
         // Add member async to the db
-        return repository.addMember(box.getUuid(), targetUuid).thenApply(_ -> {
+        return this.repository.addMember(box.getUuid(), targetUuid).thenApply(_ -> {
 
             // But we need to load the world sync
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                Player player = plugin.getServer().getPlayer(targetUuid);
+            this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
+                Player player = this.plugin.getServer().getPlayer(targetUuid);
                 if (player == null || !player.isOnline()) {
                     return;
                 }
 
-                if (!box.isWorldLoaded(this.plugin)) {
-                    box.loadWorld(this.plugin);
-                }
-
-                World world = box.getWorld(this.plugin);
+                World world = this.worldManager.loadWorld(box, World.Environment.NORMAL);
                 if (world != null) {
                     Location targetLoc = world.getSpawnLocation().toCenterLocation();
                     player.teleportAsync(targetLoc)
@@ -206,7 +207,7 @@ public class BoxService {
                     // sync every player
                     this.syncOneAdvancementForEveryPlayer(box, advancement, getter);
 
-                    box.updateWorldBorder(this.plugin);
+                    this.worldManager.syncWorldBorders(box);
                 }))
                 .exceptionally(ex -> {
                     JustBoxed.getInstance().getLogger().severe("Failed to grant advancement : " + ex.getMessage());
@@ -270,5 +271,13 @@ public class BoxService {
         }
 
         return this.repository.setOwner(box, newOwnerUuid, previousOwnerUuid);
+    }
+
+    public boolean isWorldLoaded(Box box, World.Environment env) {
+        return this.worldManager.getWorld(box, env).isPresent();
+    }
+
+    public World loadWorld(Box box, World.Environment env) {
+        return this.worldManager.loadWorld(box, env);
     }
 }
