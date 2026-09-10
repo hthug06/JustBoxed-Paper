@@ -11,6 +11,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static fr.ht06.justBoxed.Box.BoxTemplate.TEMPLATE_NETHER_NAME;
@@ -21,6 +22,7 @@ public class BoxWorldManager {
 
     private final Plugin plugin;
     private final Path dimensionsFolder;
+    private final Set<UUID> creatingNether = ConcurrentHashMap.newKeySet();
 
     public BoxWorldManager(Plugin plugin) {
         this.plugin = plugin;
@@ -33,6 +35,10 @@ public class BoxWorldManager {
     public NamespacedKey getWorldKey(Box box, World.Environment env) {
         String name = env == World.Environment.NORMAL ? box.getOverworldWorldName() : box.getNetherWorldName();
         return new NamespacedKey(this.plugin, name);
+    }
+
+    public boolean isNetherCreating(Box box) {
+        return creatingNether.contains(box.getUuid());
     }
 
     public Optional<World> getWorld(Box box, World.Environment env) {
@@ -156,7 +162,10 @@ public class BoxWorldManager {
         createBoxWorld(box, World.Environment.NORMAL, overworld -> {
             if (overworld != null) {
                 // After the overworld is created, create the nether
-                createBoxWorld(box, World.Environment.NETHER, null);
+                creatingNether.add(box.getUuid());
+                createBoxWorld(box, World.Environment.NETHER, nether -> {
+                    creatingNether.remove(box.getUuid());
+                });
             }
             if (onOverworldComplete != null) {
                 onOverworldComplete.accept(overworld);

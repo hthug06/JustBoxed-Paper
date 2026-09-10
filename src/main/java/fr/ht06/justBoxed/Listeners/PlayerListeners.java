@@ -107,6 +107,12 @@ public class PlayerListeners implements Listener {
             return;
         }
 
+        if (this.service.isNetherCreating(box)) {
+            event.setCancelled(true);
+            player.sendActionBar(Component.text("The Nether is being initialized...", NamedTextColor.RED));
+            return;
+        }
+
         World fromWorld = player.getWorld();
         World targetWorld;
         double targetX;

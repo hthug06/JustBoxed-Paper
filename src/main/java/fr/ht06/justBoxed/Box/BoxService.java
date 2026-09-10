@@ -280,4 +280,7 @@ public class BoxService {
     public World loadWorld(Box box, World.Environment env) {
         return this.worldManager.loadWorld(box, env);
     }
+    public boolean isNetherCreating(Box box) {
+        return this.worldManager.isNetherCreating(box);
+    }
 }
