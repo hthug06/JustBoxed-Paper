@@ -8,25 +8,24 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.WorldBorder;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerAdvancementDoneEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 
 import java.util.Set;
 import java.util.UUID;
 
 public class PlayerListeners implements Listener {
 
-    private final JustBoxed plugin;
     private final BoxService service;
     private final BoxRegistry registry;
 
-    public PlayerListeners(JustBoxed plugin, BoxService service, BoxRegistry registry){
-        this.plugin = plugin;
+    public PlayerListeners(BoxService service, BoxRegistry registry){
         this.service = service;
         this.registry = registry;
     }
@@ -95,5 +94,75 @@ public class PlayerListeners implements Listener {
                 box.removeInvitation(playerUuid);
             }
         }
+    }
+
+    @EventHandler
+    public void onPlayerPortal(PlayerPortalEvent event) {
+        if (event.getCause() != PlayerTeleportEvent.TeleportCause.NETHER_PORTAL) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        Box box = this.registry.getBoxByPlayer(player.getUniqueId());
+        if (box == null) {
+            return;
+        }
+
+        World fromWorld = player.getWorld();
+        World targetWorld;
+        double targetX;
+        double targetZ;
+
+        if (fromWorld.getEnvironment() == World.Environment.NORMAL) {
+            // Overworld -> Nether
+            targetWorld = this.service.loadWorld(box, World.Environment.NETHER);
+            if (targetWorld == null) {
+                event.setCancelled(true);
+                return;
+            }
+            targetX = event.getFrom().getX() / 8.0;
+            targetZ = event.getFrom().getZ() / 8.0;
+
+        } else if (fromWorld.getEnvironment() == World.Environment.NETHER) {
+            // Nether -> Overworld
+            targetWorld = this.service.loadWorld(box, World.Environment.NORMAL);
+            if (targetWorld == null) {
+                event.setCancelled(true);
+                return;
+            }
+            targetX = event.getFrom().getX() * 8.0;
+            targetZ = event.getFrom().getZ() * 8.0;
+
+        } else {
+            return;
+        }
+
+        // Calculation of permitted limits according to the WorldBorder
+        WorldBorder border = targetWorld.getWorldBorder();
+        Location center = border.getCenter();
+        double halfSize = (border.getSize() / 2.0) - 2.0;
+
+        double minX = center.getX() - halfSize;
+        double maxX = center.getX() + halfSize;
+        double minZ = center.getZ() - halfSize;
+        double maxZ = center.getZ() + halfSize;
+
+        // Clamping to stay inside
+        targetX = Math.clamp(targetX, minX, maxX);
+        targetZ = Math.clamp(targetZ, minZ, maxZ);
+
+        Location targetLocation = new Location(targetWorld, targetX, event.getFrom().getY(), targetZ);
+        event.setTo(targetLocation);
+
+        //Create portal
+        int safeRadius = (int) Math.floor(Math.min(
+                Math.min(targetX - minX, maxX - targetX),
+                Math.min(targetZ - minZ, maxZ - targetZ)
+        ));
+        safeRadius = Math.max(1, safeRadius);
+
+        event.setCanCreatePortal(true);
+        event.setCreationRadius(safeRadius);
+        event.setSearchRadius(128);
     }
 }

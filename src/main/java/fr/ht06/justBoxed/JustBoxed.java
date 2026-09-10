@@ -74,7 +74,7 @@ public final class JustBoxed extends JavaPlugin {
         });
 
         // Register Listeners / events
-        getServer().getPluginManager().registerEvents(new PlayerListeners(this, this.boxService, this.boxRegistry), this);
+        getServer().getPluginManager().registerEvents(new PlayerListeners(this.boxService, this.boxRegistry), this);
 
         createTemplatesWorld();
     }
