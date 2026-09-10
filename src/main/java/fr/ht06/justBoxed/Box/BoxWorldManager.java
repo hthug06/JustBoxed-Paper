@@ -94,7 +94,6 @@ public class BoxWorldManager {
 
     /**
      * Create a new World for the given box.
-     *
      * The world is created by copying the template files, and then instantiating it with {@link WorldCreator}.
      *
      * @param box The given box
@@ -193,12 +192,10 @@ public class BoxWorldManager {
         Path netherDir = dimensionsFolder.resolve("box_" + box.getUuid() + "_nether");
 
         // Clear folders async
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
-                deleteSafely(overworldDir, box.getUuid());
-                deleteSafely(netherDir, box.getUuid());
-            });
-        }, 20L);
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+            deleteSafely(overworldDir, box.getUuid());
+            deleteSafely(netherDir, box.getUuid());
+        }), 20L);
     }
 
     private void deleteSafely(Path dir, UUID boxUuid) {

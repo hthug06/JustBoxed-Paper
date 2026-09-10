@@ -3,7 +3,6 @@ package fr.ht06.justBoxed.Listeners;
 import fr.ht06.justBoxed.Box.Box;
 import fr.ht06.justBoxed.Box.BoxRegistry;
 import fr.ht06.justBoxed.Box.BoxService;
-import fr.ht06.justBoxed.JustBoxed;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.HoverEvent;

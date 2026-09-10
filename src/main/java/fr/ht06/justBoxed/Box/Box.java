@@ -3,8 +3,6 @@ package fr.ht06.justBoxed.Box;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 

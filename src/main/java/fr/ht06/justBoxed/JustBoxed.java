@@ -10,18 +10,13 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class JustBoxed extends JavaPlugin {
 
     private DatabaseManager databaseManager;
-    private BoxRepository boxRepository;
     private BoxRegistry boxRegistry;
-    private BoxService boxService;
     private BoxWorldManager boxWorldManager;
 
     public BoxRegistry getBoxRegistry() {
@@ -39,6 +34,7 @@ public final class JustBoxed extends JavaPlugin {
 
         // Init the db manager
         this.databaseManager = new DatabaseManager(this);
+        BoxRepository boxRepository;
         try {
             getLogger().info("Loading boxes...");
             this.databaseManager.init();
@@ -56,11 +52,11 @@ public final class JustBoxed extends JavaPlugin {
         this.boxWorldManager = new BoxWorldManager(this);
 
         // Start the box service with the registry and the repository
-        this.boxService = new BoxService(this, this.boxRegistry, boxRepository, this.boxWorldManager);
+        BoxService boxService = new BoxService(this, this.boxRegistry, boxRepository, this.boxWorldManager);
 
         // Register the command via the LifecycleManager of the plugin
-        BoxedCommand boxedCommand = new BoxedCommand(this, this.boxService);
-        AdminBoxedCommand adminBoxedCommand = new AdminBoxedCommand(this, this.boxService);
+        BoxedCommand boxedCommand = new BoxedCommand(this, boxService);
+        AdminBoxedCommand adminBoxedCommand = new AdminBoxedCommand(this, boxService);
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             final Commands registrar = event.registrar();
             registrar.register(
@@ -74,7 +70,7 @@ public final class JustBoxed extends JavaPlugin {
         });
 
         // Register Listeners / events
-        getServer().getPluginManager().registerEvents(new PlayerListeners(this.boxService, this.boxRegistry), this);
+        getServer().getPluginManager().registerEvents(new PlayerListeners(boxService, this.boxRegistry), this);
 
         createTemplatesWorld();
     }
@@ -82,8 +78,6 @@ public final class JustBoxed extends JavaPlugin {
     @Override
     public void onDisable() {
         if (this.boxRegistry != null) {
-            Location fallbackSpawn = Bukkit.getWorlds().getFirst().getSpawnLocation();
-
             // remove every invitation to avoid memory leak on reload
             for (Box box : this.boxRegistry.getAllBoxes()) {
                 box.clearInvitations();
