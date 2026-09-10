@@ -145,7 +145,9 @@ public class PlayerListeners implements Listener {
         // Calculation of permitted limits according to the WorldBorder
         WorldBorder border = targetWorld.getWorldBorder();
         Location center = border.getCenter();
-        double halfSize = (border.getSize() / 2.0) - 2.0;
+
+        // Avoid inverted min/max when the world border is still very small (e.g., size == 1).
+        double halfSize = Math.max(0.0, (border.getSize() / 2.0) - 2.0);
 
         double minX = center.getX() - halfSize;
         double maxX = center.getX() + halfSize;
